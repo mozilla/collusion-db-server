@@ -1,0 +1,12 @@
+{
+  "name": "mavis-db-server",
+  "version": "0.0.1",
+  "dependencies": {
+    "express": "3.x",
+    "pg": "latest"
+  },
+  "engines": {
+    "node": "0.8.x",
+    "npm": "1.1.x"
+  }
+}
