@@ -56,6 +56,7 @@ app.get("/getData", function(req,res){
       if (err) console.log(err);
   });
   
+  // SELECT by source ====================
   if ( req.param("source") ){
     if ( req.param("source").charAt(0) == "*" ){ // returns all matched subdomains
       var queryConfig = {
@@ -68,7 +69,9 @@ app.get("/getData", function(req,res){
         values: [ req.param("source") ]
       };
     }
-  }else if( req.param("target") ){
+  }
+  // SELECT by target ====================
+  else if( req.param("target") ){
     if ( req.param("target").charAt(0) == "*" ){ // returns all matched subdomains
       var queryConfig = {
         text: "SELECT * FROM connections WHERE target LIKE substr(quote_literal($1), 2, length($1))",
@@ -80,17 +83,23 @@ app.get("/getData", function(req,res){
         values: [ req.param("target") ]
       };
     }
-  }else if( req.param("cookie") ){
+  }
+  // SELECT by cookie ====================
+  else if( req.param("cookie") ){
     var queryConfig = {
       text: "SELECT * FROM connections WHERE cookie = $1",
       values: [ req.param("cookie") ]
     };
-  }else if( req.param("sourcevisited") ){
+  }
+  // SELECT by sourcevisited ====================
+  else if( req.param("sourcevisited") ){
     var queryConfig = {
       text: "SELECT * FROM connections WHERE sourcevisited = $1",
       values: [ req.param("sourcevisited") ]
     };
-  }else if( req.param("secure") ){
+  }
+  // SELECT by secure ====================
+  else if( req.param("secure") ){
     var queryConfig = {
       text: "SELECT * FROM connections WHERE secure = $1",
       values: [ req.param("secure") ]
