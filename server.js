@@ -132,10 +132,45 @@ app.get("/getData", function(req,res){
     client.end.bind(client);
     res.jsonp(resObj);
   });
-  
-
 
 });
+
+
+
+/**************************************************
+*   Get getBrowseData query result
+*/
+app.get("/getBrowseData", function(req,res){
+  var resObj = {};
+  var client = new pg.Client(process.env.DATABASE_URL);
+    client.connect(function(err) {
+      if (err) console.log(err);
+  });
+  
+  var trakcerQuery = client.query(req.param("trackersQuery"), function(err, result){
+    if (err) {
+      resObj.error = "Error encountered:" + err;
+      console.log("=== ERROR === " + err);
+    }
+    resObj.trackers = result.rows;
+  });
+
+  var trakcerQuery = client.query(req.param("websitesQuery"), function(err, result){
+    if (err) {
+      resObj.error = "Error encountered:" + err;
+      console.log("=== ERROR === " + err);
+    }
+    resObj.websites = result.rows;
+  });
+
+  //disconnect client and send response when all queries are finished
+  client.on("drain", function(){
+    client.end.bind(client);
+    res.jsonp(resObj);
+  });
+});
+
+
 
 
 
