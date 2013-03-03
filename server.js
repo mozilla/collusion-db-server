@@ -173,7 +173,7 @@ app.get("/getTracker", function(req,res){
       //values: [ req.param("target") ]
     };
   
-  client.query(queryConfig, function(err, result){
+  client.query("SELECT * FROM connections", function(err, result){
     if (err) { resObj.error = "Error encountered:" + err; }
     resObj.rowCount = result.rowCount;
     resObj.rows = result.rows;
