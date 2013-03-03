@@ -17,7 +17,6 @@ app.get("/", function(req, res) {
   client.on("drain", client.end.bind(client));
   
   res.send("Hello World!");
-  
 });
 
 
@@ -165,7 +164,7 @@ app.get("/getBrowseData", function(req,res){
       if (err) console.log(err);
   });
   
-  var trakcerQuery = client.query(req.param("trackersQuery"), function(err, result){
+  client.query(req.param("trackersQuery"), function(err, result){
     if (err) {
       resObj.error = "Error encountered:" + err;
       console.log("=== ERROR === " + err);
@@ -173,7 +172,7 @@ app.get("/getBrowseData", function(req,res){
     resObj.trackers = result.rows;
   });
 
-  var trakcerQuery = client.query(req.param("websitesQuery"), function(err, result){
+  client.query(req.param("websitesQuery"), function(err, result){
     if (err) {
       resObj.error = "Error encountered:" + err;
       console.log("=== ERROR === " + err);
@@ -187,9 +186,6 @@ app.get("/getBrowseData", function(req,res){
     res.jsonp(resObj);
   });
 });
-
-
-
 
 
 /**************************************************
