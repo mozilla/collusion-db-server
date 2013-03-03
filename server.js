@@ -169,8 +169,8 @@ app.get("/getTracker", function(req,res){
   });
 
   var queryConfig = {
-      text: "SELECT DISTINCT source, cookie FROM connections WHERE target LIKE substr(quote_literal($1), 2, length($1)) ORDER BY source",
-      values: [ req.param("target") ]
+      text: "SELECT * FROM connections",
+      //values: [ req.param("target") ]
     };
   
   client.query(queryConfig, function(err, result){
