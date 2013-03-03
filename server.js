@@ -24,11 +24,11 @@ app.get("/", function(req, res) {
 *   Reset table
 */
 app.get("/resetTable", function(req, res){
-  console.log(req.body);
+  console.log("=== RESET TABLE ===");
   
   var client = new pg.Client(process.env.DATABASE_URL);
   client.connect(function(err) {
-    if (err) console.log(err);
+    if (err) console.log("RESET TABLE ERROR: " + err);
   });
   client.query("DELETE FROM connections");
   client.query("ALTER SEQUENCE connections_id_seq RESTART WITH 1");
