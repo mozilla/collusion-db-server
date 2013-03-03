@@ -22,35 +22,34 @@ app.get("/", function(req, res) {
 });
 
 
-// Mavis: OK.  Works with node.js.  POST jsonp via AJAX is not allowed.
+app.get("/", function(req, res) {
+  var client = new pg.Client(process.env.DATABASE_URL);
+  client.connect(function(err) {
+    if (err) console.log(err);
+  });
+  //client.query("CREATE TABLE connections( id SERIAL PRIMARY KEY, source varchar(100), target varchar(100), timestamp timestamp, contentType varchar(50), cookie boolean, sourceVisited boolean, secure boolean, sourcePathDepth int, sourceQueryDepth int )");
+  client.on("drain", client.end.bind(client));
+  
+  res.send("Hello World!");
+  
+});
+
+
 /**************************************************
-*   Donate data
+*   Reset table
 */
-app.post("/donateData", function(req, res){
+app.get("/resetTable", function(req, res){
   console.log(req.body);
   
-  var jsonObj = req.body;
-  if ( jsonObj.format == "CollusionSaveFile" && jsonObj.version == "1.0" ){ // check format and version
-    var connections = jsonObj.connections;
-    var client = new pg.Client(process.env.DATABASE_URL);
-    client.connect(function(err) {
-        if (err) console.log(err);
-    });
-    for (var i=0; i<connections.length; i++){
-      connections[i][2] = parseInt(connections[i][2]) / 1000; // converts this UNIX time format from milliseconds to seconds
-      client.query({
-        text: "INSERT INTO connections(source, target, timestamp, contenttype, cookie, sourcevisited, secure, sourcepathdepth, sourcequerydepth) VALUES (substr(quote_literal($1), 2, length($1)), substr(quote_literal($2), 2, length($2)), to_timestamp($3), substr(quote_literal($4), 2, length($4)), $5, $6, $7, $8, $9)",
-        values: connections[i]
-      }, function(err,result){
-            if (err) {
-              console.log("=== ERROR === " + err);
-              res.send("Sorry. Error occurred. Please try again.");
-            }else res.send("Thanks!");
-      });
-    }
-  }else{
-    res.send("Sorry. Format/version not supported.");
-  }
+  var client = new pg.Client(process.env.DATABASE_URL);
+  client.connect(function(err) {
+    if (err) console.log(err);
+  });
+  client.query("DELETE FROM connections");
+  client.query("ALTER SEQUENCE connections_id_seq RESTART WITH 1");
+  client.on("drain", client.end.bind(client));
+  
+  res.send("Reset Table");
 });
 
 
