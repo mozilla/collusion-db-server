@@ -169,12 +169,12 @@ app.get("/getTracker", function(req,res){
   });
 
   var queryConfig = {
-      text: "SELECT * FROM connections",
-      //values: [ req.param("target") ]
+      text: "SELECT DISTINCT source, cookie FROM connections WHERE target LIKE substr(quote_literal($1), 2, length($1)) ORDER BY source",
+      values: [ req.param("target") ]
     };
   
-  client.query("SELECT * FROM connections", function(err, result){
-    if (err) { resObj.error = "Error encountered:" + err; }
+  client.query(queryConfig, function(err, result){
+    if (err) { resObj.error = "Error encountered:" + err; console.log("=== ERROR === " + err);}
     resObj.rowCount = result.rowCount;
     resObj.rows = result.rows;
   });
