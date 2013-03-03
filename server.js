@@ -54,43 +54,40 @@ app.get("/showResult", function(req,res){
       if (err) console.log(err);
   });
   
-  // Select by source ========================================
   if ( req.param("source") ){
-    var query = client.query("SELECT * FROM connections WHERE source = substr(quote_literal($1), 2, length($1))", [req.param("source")], function(err, result){
-      if (err) { resObj.error = "Error encountered:" + err; }
-      resObj = result;
-      resObj.rowCount = result.rowCount;
-      resObj.rows = result.rows;
-    });
+    var queryConfig = {
+      text: "SELECT * FROM connections WHERE source = substr(quote_literal($1), 2, length($1))",
+      values: [ req.param("source") ]
+    };
   }else if( req.param("target") ){
-    var query = client.query("SELECT * FROM connections WHERE target = substr(quote_literal($1), 2, length($1))", [req.param("target")], function(err, result){
-      if (err) { resObj.error = "Error encountered:" + err; }
-      resObj = result;
-      resObj.rowCount = result.rowCount;
-      resObj.rows = result.rows;
-    });
+    var queryConfig = {
+      text: "SELECT * FROM connections WHERE target = substr(quote_literal($1), 2, length($1))",
+      values: [ req.param("target") ]
+    };
   }else if( req.param("cookie") ){
-    var query = client.query("SELECT * FROM connections WHERE cookie = $1", [req.param("cookie")], function(err, result){
-      if (err) { resObj.error = "Error encountered:" + err; }
-      resObj = result;
-      resObj.rowCount = result.rowCount;
-      resObj.rows = result.rows;
-    });
+    var queryConfig = {
+      text: "SELECT * FROM connections WHERE cookie = $1",
+      values: [ req.param("cookie") ]
+    };
   }else if( req.param("sourcevisited") ){
-    var query = client.query("SELECT * FROM connections WHERE sourcevisited = $1", [req.param("sourcevisited")], function(err, result){
-      if (err) { resObj.error = "Error encountered:" + err; }
-      resObj = result;
-      resObj.rowCount = result.rowCount;
-      resObj.rows = result.rows;
-    });
+    var queryConfig = {
+      text: "SELECT * FROM connections WHERE sourcevisited = $1",
+      values: [ req.param("sourcevisited") ]
+    };
   }else if( req.param("secure") ){
-    var query = client.query("SELECT * FROM connections WHERE secure = $1", [req.param("secure")], function(err, result){
+    var queryConfig = {
+      text: "SELECT * FROM connections WHERE secure = $1",
+      values: [ req.param("secure") ]
+    };
+  }
+
+  if ( queryConfig ){
+    client.query(queryConfig, function(err, result){
       if (err) { resObj.error = "Error encountered:" + err; }
       resObj.rowCount = result.rowCount;
       resObj.rows = result.rows;
     });
   }
-
 
   //disconnect client and send response when all queries are finished
   client.on("drain", function(){
