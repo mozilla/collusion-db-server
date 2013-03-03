@@ -43,30 +43,62 @@ app.post("/donateData", function(req, res){
 
 
 // Mavis: OK.  Works both in ajax and node.js
-/* show SELECT query result ========================================================= */
+/**************************************************
+*   show SELECT query result
+*/
 app.get("/showResult", function(req,res){
-//console.log(req.body);
-//console.log(req.query);
-//console.log(Object.keys(req.query));
-//console.log(req.query.source);
 
-var resObj = {};
-
-if ( req.param("source") ){
+  var resObj = {};
   var client = new pg.Client(process.env.DATABASE_URL);
-  client.connect(function(err) {
-    if (err) console.log(err);
-  });
-  var query = client.query("SELECT * FROM connections WHERE source = substr(quote_literal($1), 2, length($1))", [req.param("source")], function(err, result){
-    if (err) { resObj.msg = "Error encountered."; }
-    resObj = result;
+    client.connect(function(err) {
+      if (err) console.log(err);
   });
   
-  query.on('end', function() {
-    client.end();
+  // Select by source ========================================
+  if ( req.param("source") ){
+    var query = client.query("SELECT * FROM connections WHERE source = substr(quote_literal($1), 2, length($1))", [req.param("source")], function(err, result){
+      if (err) { resObj.error = "Error encountered:" + err; }
+      resObj = result;
+      resObj.rowCount = result.rowCount;
+      resObj.rows = result.rows;
+    });
+  }else if( req.param("target") ){
+    var query = client.query("SELECT * FROM connections WHERE target = substr(quote_literal($1), 2, length($1))", [req.param("target")], function(err, result){
+      if (err) { resObj.error = "Error encountered:" + err; }
+      resObj = result;
+      resObj.rowCount = result.rowCount;
+      resObj.rows = result.rows;
+    });
+  }else if( req.param("cookie") ){
+    var query = client.query("SELECT * FROM connections WHERE cookie = $1", [req.param("cookie")], function(err, result){
+      if (err) { resObj.error = "Error encountered:" + err; }
+      resObj = result;
+      resObj.rowCount = result.rowCount;
+      resObj.rows = result.rows;
+    });
+  }else if( req.param("sourcevisited") ){
+    var query = client.query("SELECT * FROM connections WHERE sourcevisited = $1", [req.param("sourcevisited")], function(err, result){
+      if (err) { resObj.error = "Error encountered:" + err; }
+      resObj = result;
+      resObj.rowCount = result.rowCount;
+      resObj.rows = result.rows;
+    });
+  }else if( req.param("secure") ){
+    var query = client.query("SELECT * FROM connections WHERE secure = $1", [req.param("secure")], function(err, result){
+      if (err) { resObj.error = "Error encountered:" + err; }
+      resObj.rowCount = result.rowCount;
+      resObj.rows = result.rows;
+    });
+  }
+
+
+  //disconnect client and send response when all queries are finished
+  client.on("drain", function(){
+    client.end.bind(client);
     res.jsonp(resObj);
   });
-}
+  
+
 
 });
 
