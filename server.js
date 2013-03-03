@@ -15,7 +15,7 @@ app.get("/", function(req, res) {
   client.query("CREATE TABLE connections( id SERIAL PRIMARY KEY, source varchar(100), target varchar(100), timestamp timestamp, contentType varchar(50), cookie boolean, sourceVisited boolean, secure boolean, sourcePathDepth int, sourceQueryDepth int )");
 //  client.query("DELETE FROM connections");
 //  client.query("ALTER SEQUENCE connections_id_seq RESTART WITH 1");
-  client.end();
+  client.on("drain", client.end.bind(client));
   
   res.send("Hello World!");
   
