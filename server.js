@@ -126,6 +126,67 @@ app.get("/getData", function(req,res){
 
 
 
+/**************************************************
+*   Get getVisitedWebsite query result
+*/
+app.get("/getVisitedWebsite", function(req,res){
+  console.log("=== getVisitedWebsite === " + req.param("source"));
+  var resObj = {};
+  var client = new pg.Client(process.env.DATABASE_URL);
+    client.connect(function(err) {
+      if (err) console.log(err);
+  });
+
+  var queryConfig = {
+      text: "SELECT DISTINCT target, cookie FROM connections WHERE source LIKE substr(quote_literal($1), 2, length($1)) ORDER BY target",
+      values: [ req.param("source") ]
+    };
+  
+  client.query(queryConfig, function(err, result){
+    if (err) { resObj.error = "Error encountered:" + err; }
+    resObj.rowCount = result.rowCount;
+    resObj.rows = result.rows;
+  });
+
+  //disconnect client and send response when all queries are finished
+  client.on("drain", function(){
+    client.end.bind(client);
+    res.jsonp(resObj);
+  });
+});
+
+
+
+/**************************************************
+*   Get getTracker query result
+*/
+app.get("/getTracker", function(req,res){
+  console.log("=== getTracker === " + req.param("target"));
+  var resObj = {};
+  var client = new pg.Client(process.env.DATABASE_URL);
+    client.connect(function(err) {
+      if (err) console.log(err);
+  });
+
+  var queryConfig = {
+      text: "SELECT DISTINCT source, cookie FROM connections WHERE target LIKE substr(quote_literal($1), 2, length($1)) ORDER BY source",
+      values: [ req.param("target") ]
+    };
+  
+  client.query(queryConfig, function(err, result){
+    if (err) { resObj.error = "Error encountered:" + err; }
+    resObj.rowCount = result.rowCount;
+    resObj.rows = result.rows;
+  });
+
+  //disconnect client and send response when all queries are finished
+  client.on("drain", function(){
+    client.end.bind(client);
+    res.jsonp(resObj);
+  });
+});
+
+
 
 
 app.listen(process.env.PORT, function() {
