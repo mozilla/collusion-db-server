@@ -8,7 +8,17 @@ app.configure(function(){
 });
 
 app.get("/", function(req, res) {
+  var client = new pg.Client(process.env.DATABASE_URL);
+  client.connect(function(err) {
+          if (err) console.log(err);
+  });
+  client.query("CREATE TABLE connections( id SERIAL PRIMARY KEY, source varchar(100), target varchar(100), timestamp timestamp, contentType varchar(50), cookie boolean, sourceVisited boolean, secure boolean, sourcePathDepth int, sourceQueryDepth int )");
+//  client.query("DELETE FROM connections");
+//  client.query("ALTER SEQUENCE connections_id_seq RESTART WITH 1");
+  client.end();
+  
   res.send("Hello World!");
+  
 });
 
 
@@ -33,7 +43,7 @@ app.post("/donateData", function(req, res){
         values: connections[i]
       }, function(err,result){
             if (err) {
-              console.log(err);
+              console.log("=== ERROR === " + err);
               res.send("Sorry. Error occurred. Please try again.");
             }else res.send("Thanks!");
       });
@@ -108,7 +118,10 @@ app.get("/getData", function(req,res){
 
   if ( queryConfig ){
     client.query(queryConfig, function(err, result){
-      if (err) { resObj.error = "Error encountered:" + err; }
+      if (err) {
+        resObj.error = "Error encountered:" + err;
+        console.log("=== ERROR === " + err);
+      }
       resObj.rowCount = result.rowCount;
       resObj.rows = result.rows;
     });
@@ -143,7 +156,10 @@ app.get("/getVisitedWebsite", function(req,res){
     };
   
   client.query(queryConfig, function(err, result){
-    if (err) { resObj.error = "Error encountered:" + err; }
+    if (err) {
+      resObj.error = "Error encountered:" + err;
+      console.log("=== ERROR === " + err);
+    }
     resObj.rowCount = result.rowCount;
     resObj.rows = result.rows;
   });
@@ -174,7 +190,10 @@ app.get("/getTracker", function(req,res){
     };
   
   client.query(queryConfig, function(err, result){
-    if (err) { resObj.error = "Error encountered:" + err; console.log("=== ERROR === " + err);}
+    if (err) {
+      resObj.error = "Error encountered:" + err;
+      console.log("=== ERROR === " + err);
+    }
     resObj.rowCount = result.rowCount;
     resObj.rows = result.rows;
   });
