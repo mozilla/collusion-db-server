@@ -12,7 +12,7 @@ app.get("/", function(req, res) {
 });
 
 
-// Mavis: OK.  Works both with node.js.  POST jsonp via AJAX is not allowed.
+// Mavis: OK.  Works with node.js.  POST jsonp via AJAX is not allowed.
 /* Donate data handler ========================================================= */
 app.post("/donateData", function(req, res){
   console.log(req.body);
@@ -55,15 +55,29 @@ app.get("/showResult", function(req,res){
   });
   
   if ( req.param("source") ){
-    var queryConfig = {
-      text: "SELECT * FROM connections WHERE source = substr(quote_literal($1), 2, length($1))",
-      values: [ req.param("source") ]
-    };
+    if ( req.param("source").charAt(0) == "*" ){ // returns all matches subdomains
+      var queryConfig = {
+        text: "SELECT * FROM connections WHERE source LIKE substr(quote_literal($1), 2, length($1))",
+        values: [ "%" + req.param("source").slice(2) ]
+      };
+    }else{ // exact matched domain
+      var queryConfig = {
+        text: "SELECT * FROM connections WHERE source = substr(quote_literal($1), 2, length($1))",
+        values: [ req.param("source") ]
+      };
+    }
   }else if( req.param("target") ){
-    var queryConfig = {
-      text: "SELECT * FROM connections WHERE target = substr(quote_literal($1), 2, length($1))",
-      values: [ req.param("target") ]
-    };
+    if ( req.param("target").charAt(0) == "*" ){ // returns all matches subdomains
+      var queryConfig = {
+        text: "SELECT * FROM connections WHERE target LIKE substr(quote_literal($1), 2, length($1))",
+        values: [ "%" + req.param("target").slice(2) ]
+      };
+    }else{ // exact matched domain
+      var queryConfig = {
+        text: "SELECT * FROM connections WHERE target = substr(quote_literal($1), 2, length($1))",
+        values: [ req.param("target") ]
+      };
+    }
   }else if( req.param("cookie") ){
     var queryConfig = {
       text: "SELECT * FROM connections WHERE cookie = $1",
