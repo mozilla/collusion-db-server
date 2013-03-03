@@ -12,7 +12,7 @@ app.get("/", function(req, res) {
 });
 
 
-
+// Mavis: OK.  Works both with node.js.  POST jsonp via AJAX is not allowed.
 /* Donate data handler ========================================================= */
 app.post("/donateData", function(req, res){
   console.log(req.body);
@@ -41,6 +41,7 @@ app.post("/donateData", function(req, res){
   }
 });
 
+
 // Mavis: OK.  Works both in ajax and node.js
 /* show SELECT query result ========================================================= */
 app.get("/showResult", function(req,res){
@@ -48,8 +49,6 @@ app.get("/showResult", function(req,res){
 //console.log(req.query);
 //console.log(Object.keys(req.query));
 //console.log(req.query.source);
-
-console.log(typeof req.param("source"));
 
 var resObj = {};
 
@@ -68,32 +67,6 @@ if ( req.param("source") ){
     res.jsonp(resObj);
   });
 }
-
-
-
-
-//res.jsonp({msg:"hello"});
-
-//  if ( Object.keys(req.query).length != 0 ){;
-//    var client = new pg.Client(process.env.DATABASE_URL);
-//    client.connect(function(err) {
-//        if (err) console.log(err);
-//    });
-//    var filter = new Array();
-//    for ( prop in req.query ){
-//      filter.push(prop + " = " + req.query[prop]);
-//    }
-//    var select = "";
-//    if ( filter ){
-//      select = " WHERE " + filter.join(" AND ");
-//    }
-//    var query = client.query("SELECT * FROM connections" + select, function(err, result){
-//      if (err) res.send("Error encountered.  Check your query please.");
-//      res.send(result);
-//    });
-//  }else{
-//    res.send("Oops! Enter the GET query please!");
-//  }
 
 });
 
