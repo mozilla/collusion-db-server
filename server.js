@@ -13,7 +13,9 @@ app.get("/", function(req, res) {
 
 
 // Mavis: OK.  Works with node.js.  POST jsonp via AJAX is not allowed.
-/* Donate data handler ========================================================= */
+/**************************************************
+*   Donate data
+*/
 app.post("/donateData", function(req, res){
   console.log(req.body);
   
@@ -44,9 +46,9 @@ app.post("/donateData", function(req, res){
 
 // Mavis: OK.  Works both in ajax and node.js
 /**************************************************
-*   show SELECT query result
+*   Get SELECT query result
 */
-app.get("/showResult", function(req,res){
+app.get("/getData", function(req,res){
 
   var resObj = {};
   var client = new pg.Client(process.env.DATABASE_URL);
@@ -55,7 +57,7 @@ app.get("/showResult", function(req,res){
   });
   
   if ( req.param("source") ){
-    if ( req.param("source").charAt(0) == "*" ){ // returns all matches subdomains
+    if ( req.param("source").charAt(0) == "*" ){ // returns all matched subdomains
       var queryConfig = {
         text: "SELECT * FROM connections WHERE source LIKE substr(quote_literal($1), 2, length($1))",
         values: [ "%" + req.param("source").slice(2) ]
@@ -67,7 +69,7 @@ app.get("/showResult", function(req,res){
       };
     }
   }else if( req.param("target") ){
-    if ( req.param("target").charAt(0) == "*" ){ // returns all matches subdomains
+    if ( req.param("target").charAt(0) == "*" ){ // returns all matched subdomains
       var queryConfig = {
         text: "SELECT * FROM connections WHERE target LIKE substr(quote_literal($1), 2, length($1))",
         values: [ "%" + req.param("target").slice(2) ]
