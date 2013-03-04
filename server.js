@@ -4,7 +4,7 @@ var pg = require("pg");
 
 app.configure(function(){
   app.use(express.static(__dirname + "/public"));
-  app.use(express.bodyParser());    
+  app.use(express.bodyParser());
 });
 
 
@@ -38,7 +38,6 @@ app.get("/resetTable", function(req, res){
 });
 
 
-// Mavis: OK.  Works with node.js.  POST jsonp via AJAX is not allowed.
 /**************************************************
 *   Donate data
 */
@@ -70,8 +69,6 @@ app.post("/donateData", function(req, res){
 });
 
 
-
-// Mavis: OK.  Works both in ajax and node.js
 /**************************************************
 *   Get SELECT query result
 */
