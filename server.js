@@ -50,78 +50,96 @@ app.post("/donateData", function(req, res){
 *   Get SELECT query result
 */
 app.get("/getData", function(req,res){
-    var resObj = {};
-    var client = new pg.Client(process.env.DATABASE_URL);
+    // if no params, show messages explaining how the parameters should be used
+    if ( req.params.length == 0 & Object.keys(req.body).length == 0 &  Object.keys(req.query).length == 0 ){
+        res.send(  "<div style='font-family: Georgia'>" +
+                   "<h1>Oops!</h1>" +
+                   "The currently accepted params are: " +
+                   "<ul>" +
+                   "<li><b>source</b>: domain of the requested site. (eg. www.example.com, *.example.com)</li>" +
+                   "<li><b>target</b>: domain of the target site.  (eg. www.example.com, *.example.com)</li>" + 
+                   "<li><b>cookie</b>: whether or not any cookies were set. (true/false)</li>" + 
+                   "<li><b>sourcevisited</b>: whether or not the source was loaded by the user in a page or tab.  (true/false)</li>" + 
+                   "<li><b>secure</b>: whether or not content loaded via the HTTPS protocol.  (true/false)</li>" +  
+                   "</ul></div>"       
+        );
+    }else{
+        var resObj = {};
+        var client = new pg.Client(process.env.DATABASE_URL);
         client.connect(function(err) {
             if (err) console.log(err);
-    });
-  
-    // SELECT by source ====================
-    if ( req.param("source") ){
-        if ( req.param("source").charAt(0) == "*" ){ // returns all matched subdomains
-            var queryConfig = {
-                text: "SELECT * FROM connections WHERE source LIKE substr(quote_literal($1), 2, length($1))",
-                values: [ "%" + req.param("source").slice(2) ]
-            };
-        }else{ // exact matched domain
-            var queryConfig = {
-                text: "SELECT * FROM connections WHERE source = substr(quote_literal($1), 2, length($1))",
-                values: [ req.param("source") ]
-            };
-        }
-    }
-    // SELECT by target ====================
-    else if( req.param("target") ){
-        if ( req.param("target").charAt(0) == "*" ){ // returns all matched subdomains
-            var queryConfig = {
-              text: "SELECT * FROM connections WHERE target LIKE substr(quote_literal($1), 2, length($1))",
-              values: [ "%" + req.param("target").slice(2) ]
-            };
-        }else{ // exact matched domain
-            var queryConfig = {
-              text: "SELECT * FROM connections WHERE target = substr(quote_literal($1), 2, length($1))",
-              values: [ req.param("target") ]
-            };
-        }
-    }
-    // SELECT by cookie ====================
-    else if( req.param("cookie") ){
-        var queryConfig = {
-            text: "SELECT * FROM connections WHERE cookie = $1",
-            values: [ req.param("cookie") ]
-        };
-    }
-    // SELECT by sourcevisited ====================
-    else if( req.param("sourcevisited") ){
-        var queryConfig = {
-            text: "SELECT * FROM connections WHERE sourcevisited = $1",
-            values: [ req.param("sourcevisited") ]
-        };
-    }
-    // SELECT by secure ====================
-    else if( req.param("secure") ){
-        var queryConfig = {
-            text: "SELECT * FROM connections WHERE secure = $1",
-            values: [ req.param("secure") ]
-        };
-    }
-
-    if ( queryConfig ){
-        client.query(queryConfig, function(err, result){
-            if (err) {
-              resObj.error = "Error encountered:" + err;
-              console.log("=== ERROR === " + err);
-            }
-            resObj.rowCount = result.rowCount;
-            resObj.rows = result.rows;
         });
-    }
+  
+        // SELECT by source ====================
+        if ( req.param("source") ){
+            if ( req.param("source").charAt(0) == "*" ){ // returns all matched subdomains
+                var queryConfig = {
+                    text: "SELECT * FROM connections WHERE source LIKE substr(quote_literal($1), 2, length($1))",
+                    values: [ "%" + req.param("source").slice(2) ]
+                };
+            }else{ // exact matched domain
+                var queryConfig = {
+                    text: "SELECT * FROM connections WHERE source = substr(quote_literal($1), 2, length($1))",
+                    values: [ req.param("source") ]
+                };
+            }
+        }
+        // SELECT by target ====================
+        else if( req.param("target") ){
+            if ( req.param("target").charAt(0) == "*" ){ // returns all matched subdomains
+                var queryConfig = {
+                  text: "SELECT * FROM connections WHERE target LIKE substr(quote_literal($1), 2, length($1))",
+                  values: [ "%" + req.param("target").slice(2) ]
+                };
+            }else{ // exact matched domain
+                var queryConfig = {
+                  text: "SELECT * FROM connections WHERE target = substr(quote_literal($1), 2, length($1))",
+                  values: [ req.param("target") ]
+                };
+            }
+        }
+        // SELECT by cookie ====================
+        else if( req.param("cookie") ){
+            var queryConfig = {
+                text: "SELECT * FROM connections WHERE cookie = $1",
+                values: [ req.param("cookie") ]
+            };
+        }
+        // SELECT by sourcevisited ====================
+        else if( req.param("sourcevisited") ){
+            var queryConfig = {
+                text: "SELECT * FROM connections WHERE sourcevisited = $1",
+                values: [ req.param("sourcevisited") ]
+            };
+        }
+        // SELECT by secure ====================
+        else if( req.param("secure") ){
+            var queryConfig = {
+                text: "SELECT * FROM connections WHERE secure = $1",
+                values: [ req.param("secure") ]
+            };
+        }
 
-    //disconnect client and send response when all queries are finished
-    client.on("drain", function(){
-        client.end.bind(client);
-        res.jsonp(resObj);
-    });
+        if ( queryConfig ){
+            client.query(queryConfig, function(err, result){
+                if (err) {
+                  resObj.error = "Error encountered:" + err;
+                  console.log("=== ERROR === " + err);
+                }
+                resObj.rowCount = result.rowCount;
+                resObj.rows = result.rows;
+            });
+        }
+
+        //disconnect client and send response when all queries are finished
+        client.on("drain", function(){
+            client.end.bind(client);
+            res.jsonp(resObj);
+        });
+    
+    }
+    
+    
 });
 
 
