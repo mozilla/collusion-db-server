@@ -48,6 +48,7 @@ app.post("/donateData", function(req, res){
   if ( jsonObj.format === "Collusion Save File" && jsonObj.version === "1.0" ){ // check format and version
     var connections = jsonObj.connections;
     var client = new pg.Client(process.env.DATABASE_URL);
+    var rowAdded = 0;
     client.connect(function(err) {
         if (err) console.log(err);
     });
@@ -60,9 +61,10 @@ app.post("/donateData", function(req, res){
             if (err) {
               console.log("=== ERROR === " + err);
               res.send("Sorry. Error occurred. Please try again.");
-            }else res.send("Thanks!");
+            }else{ rowAdded++; }
       });
     }
+    res.send("Thanks! " + rowAdded + " of rows were successfuly added to the database.");
   }else{
     res.send("Sorry. Format/version " + jsonObj.format + "/" + jsonObj.version + " not supported.");
   }
