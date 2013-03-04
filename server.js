@@ -9,32 +9,7 @@ app.configure(function(){
 
 
 app.get("/", function(req, res) {
-    var client = new pg.Client(process.env.DATABASE_URL);
-    client.connect(function(err) {
-        if (err) console.log(err);
-    });
-    //client.query("CREATE TABLE connections( id SERIAL PRIMARY KEY, source varchar(100), target varchar(100), timestamp timestamp, contentType varchar(50), cookie boolean, sourceVisited boolean, secure boolean, sourcePathDepth int, sourceQueryDepth int )");
-    client.on("drain", client.end.bind(client));
-  
-    res.send("Hello World! test");
-});
-
-
-/**************************************************
-*   Reset table
-*/
-app.get("/resetTable", function(req, res){
-    console.log("=== RESET TABLE ===");
-  
-    var client = new pg.Client(process.env.DATABASE_URL);
-    client.connect(function(err) {
-        if (err) console.log("RESET TABLE ERROR: " + err);
-    });
-    client.query("DELETE FROM connections");
-    client.query("ALTER SEQUENCE connections_id_seq RESTART WITH 1");
-    client.on("drain", client.end.bind(client));
-  
-    res.send("Reset Table");
+    res.send("Hello World!");
 });
 
 
