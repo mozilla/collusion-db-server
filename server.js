@@ -16,7 +16,7 @@ app.get("/", function(req, res) {
   //client.query("CREATE TABLE connections( id SERIAL PRIMARY KEY, source varchar(100), target varchar(100), timestamp timestamp, contentType varchar(50), cookie boolean, sourceVisited boolean, secure boolean, sourcePathDepth int, sourceQueryDepth int )");
   client.on("drain", client.end.bind(client));
   
-  res.send("Hello World!");
+  res.send("Hello World! test");
 });
 
 
