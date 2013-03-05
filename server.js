@@ -29,8 +29,10 @@ app.post("/donateData", function(req, res){
         });
         for (var i=0; i<connections.length; i++){
             connections[i][2] = parseInt(connections[i][2]) / 1000; // converts this UNIX time format from milliseconds to seconds
+            //a paramaterized query provides a barrier to sql injection attacks
             client.query({
-                text: "INSERT INTO connections(source, target, timestamp, contenttype, cookie, sourcevisited, secure, sourcepathdepth, sourcequerydepth) VALUES (substr(quote_literal($1), 2, length($1)), substr(quote_literal($2), 2, length($2)), to_timestamp($3), substr(quote_literal($4), 2, length($4)), $5, $6, $7, $8, $9)",
+                //text: "INSERT INTO connections(source, target, timestamp, contenttype, cookie, sourcevisited, secure, sourcepathdepth, sourcequerydepth) VALUES (substr(quote_literal($1), 2, length($1)), substr(quote_literal($2), 2, length($2)), to_timestamp($3), substr(quote_literal($4), 2, length($4)), $5, $6, $7, $8, $9)",
+                text: "INSERT INTO connections(source, target, timestamp, contenttype, cookie, sourcevisited, secure, sourcepathdepth, sourcequerydepth) VALUES ($1, $2, to_timestamp($3), $4, $5, $6, $7, $8, $9)",
                 values: connections[i]
             }, function(err,result){
                 if (err) {
@@ -118,6 +120,7 @@ app.get("/getData", function(req,res){
             client.connect(function(err) {
                 if (err) console.log(err);
             });
+            //a paramaterized query provides a barrier to sql injection attacks
             var queryConfig = {
                 text: "SELECT * FROM connections WHERE " + filterArray.join(" AND "),
                 values: valueArray
@@ -136,9 +139,7 @@ app.get("/getData", function(req,res){
                 res.jsonp(resObj);
             });
         }
-    }
-    
-    
+    }    
 });
 
 
