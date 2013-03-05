@@ -39,7 +39,11 @@ app.post("/donateData", function(req, res){
                 }else{ rowAdded++; }
             });
         }
-        res.send("Thanks! " + rowAdded + " of rows were successfuly added to the database.");
+        //disconnect client and send response when all queries are finished
+        client.on("drain", function(){
+            client.end.bind(client);
+            res.send("Thanks! " + rowAdded + " of rows were successfully added to the database.");
+        });
     }else{
         res.send("Sorry. Format/version " + jsonObj.format + "/" + jsonObj.version + " not supported.");
     }
