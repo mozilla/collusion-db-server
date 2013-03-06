@@ -17,8 +17,6 @@ app.get("/", function(req, res) {
 *   Donate data
 */
 app.post("/donateData", function(req, res){
-    console.log(req.body);
-  
     var jsonObj = req.body;
     if ( jsonObj.format === "Collusion Save File" && jsonObj.version === "1.0" ){ // check format and version
         var connections = jsonObj.connections;
@@ -31,7 +29,6 @@ app.post("/donateData", function(req, res){
             connections[i][2] = parseInt(connections[i][2]) / 1000; // converts this UNIX time format from milliseconds to seconds
             //a paramaterized query provides a barrier to sql injection attacks
             client.query({
-                //text: "INSERT INTO connections(source, target, timestamp, contenttype, cookie, sourcevisited, secure, sourcepathdepth, sourcequerydepth) VALUES (substr(quote_literal($1), 2, length($1)), substr(quote_literal($2), 2, length($2)), to_timestamp($3), substr(quote_literal($4), 2, length($4)), $5, $6, $7, $8, $9)",
                 text: "INSERT INTO connections(source, target, timestamp, contenttype, cookie, sourcevisited, secure, sourcepathdepth, sourcequerydepth) VALUES ($1, $2, to_timestamp($3), $4, $5, $6, $7, $8, $9)",
                 values: connections[i]
             }, function(err,result){
@@ -94,6 +91,13 @@ app.get("/getData", function(req,res){
                 filterArray.push("target = $" + paramNum);
                 valueArray.push(req.param("target"));
             }
+        }
+        
+        if ( req.param("date") ){
+            paramNum++;
+            filterArray.push("timestamp BETWEEN to_timestamp($" +  paramNum + ", 'YYYY-MM-DD') " +
+                                                 " AND to_timestamp($" + paramNum + ", 'YYYY-MM-DD') + interval '1 day'" );
+            valueArray.push(req.param("date"));
         }
         
         if ( req.param("cookie") ){
