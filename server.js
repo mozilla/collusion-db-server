@@ -62,6 +62,9 @@ app.get("/getData", function(req,res){
                    "<ul>" +
                    "<li><b>source</b>: domain of the requested site. (eg. www.example.com, *.example.com)</li>" +
                    "<li><b>target</b>: domain of the target site.  (eg. www.example.com, *.example.com)</li>" + 
+                   "<li><b>date</b>: date that the connection was set (YYYY-MM-DD eg. 2012-12-31)</li>" +
+                   "<li><b>dateSince</b>: (if param dataBefore is not presented), returns every connection that were set between dateSince and now (YYYY-MM-DD eg. 2013-02-11)</li>" +
+                   "<li><b>dateBefore</b>: (if param dataSince is not presented), returns every connection that were set up to and including dateBefore (YYYY-MM-DD eg. 2013-03-01)</li>" +
                    "<li><b>cookie</b>: whether or not any cookies were set. (true/false)</li>" + 
                    "<li><b>sourcevisited</b>: whether or not the source was loaded by the user in a page or tab.  (true/false)</li>" + 
                    "<li><b>secure</b>: whether or not content loaded via the HTTPS protocol.  (true/false)</li>" +  
@@ -100,6 +103,26 @@ app.get("/getData", function(req,res){
             valueArray.push(req.param("date"));
         }
         
+        if ( req.param("dateSince") && req.param("dateBefore") ){
+            paramNum++;
+            filterArray.push("timestamp BETWEEN to_timestamp($" +  paramNum + ", 'YYYY-MM-DD') " +
+                                                 " AND to_timestamp($" + (paramNum+1) + ", 'YYYY-MM-DD') + interval '1 day'" );
+            valueArray.push(req.param("dateSince"));
+            valueArray.push(req.param("dateBefore"));    
+        }
+        
+        if ( req.param("dateSince") && !req.param("dateBefore") ){
+            paramNum++;
+            filterArray.push("timestamp BETWEEN to_timestamp($" +  paramNum + ", 'YYYY-MM-DD') AND now()" );
+                valueArray.push(req.param("dateSince"));
+        }
+
+        if ( !req.param("dateSince") && req.param("dateBefore") ){
+            paramNum++;
+            filterArray.push("timestamp < to_timestamp($" +  paramNum + ", 'YYYY-MM-DD') " );
+            valueArray.push(req.param("dateBefore"));
+        }
+               
         if ( req.param("cookie") ){
             paramNum++;
             filterArray.push("cookie = $" + paramNum );
