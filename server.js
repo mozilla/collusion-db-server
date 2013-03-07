@@ -147,7 +147,7 @@ app.get("/getData", function(req,res){
             client.connect(function(err) {
                 if (err) console.log(err);
             });
-            //a paramaterized query provides a barrier to sql injection attacks
+            //a parameterized query provides a barrier to sql injection attacks
             var queryConfig = {
                 text: "SELECT * FROM connections WHERE " + filterArray.join(" AND "),
                 values: valueArray
