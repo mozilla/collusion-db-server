@@ -7,6 +7,7 @@ app.configure(function(){
     app.use(express.bodyParser());
 });
 
+var pool = mysql.createPool(process.env.DATABASE_URL);
 
 app.get("/", function(req, res) {
     res.send("Hello World!");
@@ -21,23 +22,21 @@ app.post("/donateData", function(req, res){
     if ( jsonObj.format === "Collusion Save File" && jsonObj.version === "1.0" ){ // check format and version
         var connections = jsonObj.connections;
         var rowAdded = 0;
-        var client = mysql.createConnection(process.env.DATABASE_URL);
-        client.connect(function(err){
-            if ( err ) console.log("=== ERROR === " + err);
-        }); 
-        for (var i=0; i<connections.length; i++){
-            connections[i][2] = parseInt(connections[i][2]) / 1000; // converts this UNIX time format from milliseconds to seconds
-            //avoid SQL Injection attacks by using ? as placeholders for values to be escaped
-            client.query("INSERT INTO Connection(source, target, timestamp, contenttype, cookie, sourcevisited, secure, sourcepathdepth, sourcequerydepth) VALUES (?, ?, FROM_UNIXTIME(?), ?, ?, ?, ?, ?, ?)", connections[i], function(err, results){
-                if (err) {
-                    console.log("=== ERROR === " + err);
-                    res.send("Sorry. Error occurred. Please try again.");
-                }else{ rowAdded++; }           
-            });
-        }      
-        client.end(function(err) {
-            if (err) { console.log("=== ERROR === " + err); }
-        });        
+        pool.getConnection( function(err,dbConnection){
+            for (var i=0; i<connections.length; i++){
+                connections[i][2] = parseInt(connections[i][2]) / 1000; // converts this UNIX time format from milliseconds to seconds
+                //avoid SQL Injection attacks by using ? as placeholders for values to be escaped
+                dbConnection.query("INSERT INTO Connection(source, target, timestamp, contenttype, cookie, sourcevisited, secure, sourcepathdepth, sourcequerydepth) VALUES (?, ?, FROM_UNIXTIME(?), ?, ?, ?, ?, ?, ?)", connections[i], function(err, results){
+                    if (err) {
+                        console.log("=== ERROR === " + err);
+                        res.send("Sorry. Error occurred. Please try again.");
+                    }else{ rowAdded++; }     
+                    dbConnection.end(function(err) {
+                        if (err) { console.log("=== ERROR === " + err); }
+                    });                     
+                });
+            }        
+        });     
     }
     else{
         res.send("Sorry. Format/version " + jsonObj.format + "/" + jsonObj.version + " not supported.");
@@ -137,28 +136,27 @@ app.get("/getData", function(req,res){
         }
         
         if ( filterArray.length > 0 && valueArray.length > 0 ){
-            var resObj = {};
-            var client = mysql.createConnection(process.env.DATABASE_URL);
-    client.connect(function(err){
-        if ( err ) console.log("=== ERROR === " + err);
-    }); 
-            //avoid SQL Injection attacks by using ? as placeholders for values to be escaped
-            var queryConfig = {
-                text: "SELECT * FROM Connection WHERE " + filterArray.join(" AND "),
-                values: valueArray
-            };
-            client.query(queryConfig.text, queryConfig.values, function(err, rows){
-                if (err) {
-                    resObj.error = "Error encountered: " + err;
-                    console.log("=== ERROR === " + err);
-                }
-                resObj.rowCount = rows.length;
-                resObj.rows = rows;
-            });
-            //disconnect client and send response when all queries are finished
-            client.end(function(err) {
-                if (err) { console.log("=== ERROR === " + err); }
-                res.jsonp(resObj);
+            pool.getConnection( function(err,dbConnection){
+                var resObj = {};
+                //avoid SQL Injection attacks by using ? as placeholders for values to be escaped
+                var queryConfig = {
+                    text: "SELECT * FROM Connection WHERE " + filterArray.join(" AND "),
+                    values: valueArray
+                };
+                dbConnection.query(queryConfig.text, queryConfig.values, function(err, rows){
+                    if (err) {
+                        resObj.error = "Error encountered: " + err;
+                        console.log("=== ERROR === " + err);
+                    }
+                    resObj.rowCount = rows.length;
+                    resObj.rows = rows;
+                    //disconnect dbConnection and send response when all queries are finished
+                    dbConnection.end(function(err) {
+                        if (err) { console.log("=== ERROR === " + err); }
+                        res.jsonp(resObj);
+                    });
+                });
+                
             });
         }
     }    
@@ -170,34 +168,33 @@ app.get("/getData", function(req,res){
 *   Get getBrowseData query result
 */
 app.get("/getBrowseData", function(req,res){
-    var resObj = {};
-    var client = mysql.createConnection(process.env.DATABASE_URL);
-    client.connect(function(err){
-        if ( err ) console.log("=== ERROR === " + err);
-    }); 
-  
-    var trackersQuery = "SELECT target, COUNT(distinct source) FROM Connection GROUP BY target ORDER BY COUNT(distinct source) DESC LIMIT 10";
-    var websitesQuery = "SELECT source, COUNT(distinct target), MAX(timestamp) FROM Connection where sourceVisited = true GROUP BY source ORDER BY COUNT(distinct target) DESC LIMIT 10";
-    client.query(trackersQuery, function(err, rows){
-        if (err) {
-            resObj.error = "Error encountered:" + err;
-            console.log("=== ERROR === " + err);
-        }
-        resObj.trackers = rows;
-    });
+    pool.getConnection( function(err,dbConnection){
+        var resObj = {};
+        var trackersQuery = "SELECT target, COUNT(distinct source) FROM Connection GROUP BY target ORDER BY COUNT(distinct source) DESC LIMIT 10";
+        var websitesQuery = "SELECT source, COUNT(distinct target), MAX(timestamp) FROM Connection where sourceVisited = true GROUP BY source ORDER BY COUNT(distinct target) DESC LIMIT 10";
+        dbConnection.query(trackersQuery, function(err, rows){
+            if (err) {
+                resObj.error = "Error encountered:" + err;
+                console.log("=== ERROR === " + err);
+            }
+            resObj.trackers = rows;
+        });
 
-    client.query(websitesQuery, function(err, rows){
-        if (err) {
-            resObj.error = "Error encountered:" + err;
-            console.log("=== ERROR === " + err);
-        }
-        resObj.websites = rows;
-    });
+        dbConnection.query(websitesQuery, function(err, rows){
+            if (err) {
+                resObj.error = "Error encountered:" + err;
+                console.log("=== ERROR === " + err);
+            }
+            resObj.websites = rows;
+            
+            dbConnection.end(function(err) {
+                if (err) { console.log("=== ERROR === " + err); }
+                res.jsonp(resObj);
+            });
+        });
 
-    client.end(function(err) {
-        if (err) { console.log("=== ERROR === " + err); }
-        res.jsonp(resObj);
     });
+    
 });
 
 
@@ -206,29 +203,26 @@ app.get("/getBrowseData", function(req,res){
 */
 app.get("/getVisitedWebsite", function(req,res){
     console.log("=== getVisitedWebsite === " + req.param("source"));
-    var resObj = {};
-    var client = mysql.createConnection(process.env.DATABASE_URL);
-    client.connect(function(err){
-        if ( err ) console.log("=== ERROR === " + err);
-    }); 
+    pool.getConnection( function(err,dbConnection){
+        var resObj = {};
 
-    var queryConfig = {
-        text: "SELECT DISTINCT target, cookie FROM Connection WHERE source = ? ORDER BY target",
-        values: [ req.param("source") ]
-    };
+        var queryConfig = {
+            text: "SELECT DISTINCT target, cookie FROM Connection WHERE source = ? ORDER BY target",
+            values: [ req.param("source") ]
+        };
   
-    client.query(queryConfig.text, queryConfig.values, function(err, rows){
-        if (err) {
-            resObj.error = "Error encountered:" + err;
-            console.log("=== ERROR === " + err);
-        }
-        resObj.rowCount = rows.length;
-        resObj.rows = rows;
-    });
-
-    client.end(function(err) {
-        if (err) { console.log("=== ERROR === " + err); }
-        res.jsonp(resObj);
+        dbConnection.query(queryConfig.text, queryConfig.values, function(err, rows){
+            if (err) {
+                resObj.error = "Error encountered:" + err;
+                console.log("=== ERROR === " + err);
+            }
+            resObj.rowCount = rows.length;
+            resObj.rows = rows;
+            dbConnection.end(function(err) {
+            if (err) { console.log("=== ERROR === " + err); }
+                res.jsonp(resObj);
+            });
+        });        
     });
 });
 
@@ -239,30 +233,27 @@ app.get("/getVisitedWebsite", function(req,res){
 */
 app.get("/getTracker", function(req,res){
     console.log("=== getTracker === " + req.param("target"));
-    var resObj = {};
-    var client = mysql.createConnection(process.env.DATABASE_URL);
-    client.connect(function(err){
-        if ( err ) console.log("=== ERROR === " + err);
-    }); 
+    pool.getConnection( function(err,dbConnection){
+        var resObj = {};
     
-    //avoid SQL Injection attacks by using ? as placeholders for values to be escaped
-    var queryConfig = {
-        text: "SELECT DISTINCT source, cookie FROM Connection WHERE target = ? ORDER BY source",
-        values: [ req.param("target") ]
-    };
+        //avoid SQL Injection attacks by using ? as placeholders for values to be escaped
+        var queryConfig = {
+            text: "SELECT DISTINCT source, cookie FROM Connection WHERE target = ? ORDER BY source",
+            values: [ req.param("target") ]
+        };
   
-    client.query(queryConfig.text, queryConfig.values, function(err, rows){
-        if (err) {
-            resObj.error = "Error encountered:" + err;
-            console.log("=== ERROR === " + err);
-        }
-        resObj.rowCount = rows.length;
-        resObj.rows = rows;
-    });
-
-    client.end(function(err) {
-        if (err) { console.log("=== ERROR === " + err); }
-        res.jsonp(resObj);
+        dbConnection.query(queryConfig.text, queryConfig.values, function(err, rows){
+            if (err) {
+                resObj.error = "Error encountered:" + err;
+                console.log("=== ERROR === " + err);
+            }
+            resObj.rowCount = rows.length;
+            resObj.rows = rows;
+            dbConnection.end(function(err) {
+                if (err) { console.log("=== ERROR === " + err); }
+                res.jsonp(resObj);
+            });
+        });
     });
 });
 
