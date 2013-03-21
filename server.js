@@ -229,9 +229,9 @@ app.get("/getVisitedWebsite", function(req,res){
 
 
 /**************************************************
-*   Get getTracker query result
+*   Get getThirdPartyWebsite query result
 */
-app.get("/getTracker", function(req,res){
+app.get("/getThirdPartyWebsite", function(req,res){
     console.log("=== getTracker === " + req.param("target"));
     pool.getConnection( function(err,dbConnection){
         var resObj = {};
