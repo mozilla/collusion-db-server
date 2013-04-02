@@ -270,7 +270,7 @@ app.get("/getData", function(req,res){
 */
 app.post("/donateData", function(req, res){
     var jsonObj = req.body;
-    if ( jsonObj.format === "CollusionSaveFile" && jsonObj.version === "1.1" ){ // check format and version
+    if ( jsonObj.format === "Collusion Save File" && jsonObj.version === "1.1" ){ // check format and version
         var connections = jsonObj.connections;
         var rowAdded = 0;
         pool.getConnection( function(err,dbConnection){
