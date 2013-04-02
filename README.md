@@ -14,9 +14,10 @@ The currently accepted params are:
 
 - - -
 
-When `aggregateData` is `true`, the additional params you can pass in are
-  (Note that data returned is based on connections made in the last 24 hours)
+When `aggregateData` is `true`, the additional params you can pass in are:
 * `name`: url of the site that you want to search for (eg. www.example.com)
+
+(Note that data returned is based on connections made in the last 24 hours and only the top 50 sites are returned)
     
 - - -
 When `aggregateData` is `false`, the additional params you can pass in are
