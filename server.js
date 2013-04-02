@@ -107,7 +107,16 @@ function setNodemap(params,callback){
                     result[params.name] = nodemap[params.name];
                     callback( result || "Cannot find in the database.");
                 }else{
-                    callback( nodemap || "Cannot find in the database.");
+                    var arr = Object.keys(nodemap).map(function(key){
+                        return [ nodemap[key].howMany, nodemap[key] ];
+                    }).sort(function(a,b){
+                        return b[0] - a[0];
+                    });
+                    var top50 = {};
+                    arr.slice(0,50).forEach(function(item){
+                        top50[ item[1].name ] = item[1];
+                    });
+                    callback( top50 || "Cannot find in the database.");
                 }
             });
     });
