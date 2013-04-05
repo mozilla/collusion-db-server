@@ -22,13 +22,13 @@ function Site(conn, isSource){
     this.linkedFrom = [];
     this.linkedTo = [];
     this.contentTypes = [];
-    this.cookie = false;
-    this.notCookie = false;
-    this.visited = false;
-    this.notVisited = false;
-    this.secure = false;
-    this.notSecure = false;
-    this.howMany = 0;
+    this.subdomain = [];
+    this.method = [];
+    this.status = [];
+    this.visitedCount = 0;
+    this.secureCount = 0;
+    this.cookieCount = 0;
+    this.howMany = 0;    
     if (conn){
         this.update(conn, isSource);
     }
@@ -53,22 +53,35 @@ Site.prototype.update = function (conn, isSource){
     if (this.contentTypes.indexOf(conn.contentType) < 0){
         this.contentTypes.push(conn.contentType);
     }
-    this.cookie = this.cookie || (conn.cookie == true); // boolean in db is saved as 0/1
-    this.notCookie = this.notCookie || (!conn.cookie == true);
     if (isSource){
-        this.visited = this.visited || (conn.sourceVisited == true);
-        this.notVisited = this.notVisited || (!conn.sourceVisited == true);
-    }
-    if (this.visited && this.notVisited){
-        this.nodeType = 'both';
-    }else if (this.visited){
-        this.nodeType = 'site';
+        this.visitedCount = conn.sourceVisited ? this.visitedCount+1 : this.visitedCount;
+        if ( this.subdomain.indexOf(conn.sourceSub) < 0 ){
+            this.subdomain.push(conn.sourceSub);
+        }
     }else{
-        this.nodeType = 'thirdparty';
+        if ( this.subdomain.indexOf(conn.targetSub) < 0 ){
+            this.subdomain.push(conn.targetSub);
+        }
     }
-    this.secure = this.secure || (conn.secure == true);
-    this.notSecure = this.secure || (!conn.secure == true);
-    this.howMany++;
+    this.cookieCount = conn.cookie ? this.cookieCount+1 : this.cookieCount;
+    this.secureCount = conn.secure ? this.secureCount+1 : this.secureCount;
+    if ( this.method.indexOf(conn.method) < 0 ){
+        this.method.push(conn.method);
+    }
+    if ( this.status.indexOf(conn.status) < 0 ){
+        this.status.push(conn.status);
+    }
+    this.howMany++; 
+    if ( this.visitedCount/this.howMany == 1 ){
+        this.nodeType = 'site';
+    }else if ( this.visitedCount/this.howMany == 0 ){
+        this.nodeType = 'thirdparty';
+    }else{
+        this.nodeType = 'both';
+    }
+
+    
+    
     return this;
 }
 
