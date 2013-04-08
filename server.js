@@ -28,7 +28,7 @@ function Site(conn, isSource){
     this.visitedCount = 0;
     this.secureCount = 0;
     this.cookieCount = 0;
-    this.howMany = 0;    
+    this.howMany = 0;
     if (conn){
         this.update(conn, isSource);
     }
@@ -79,71 +79,97 @@ Site.prototype.update = function (conn, isSource){
     }else{
         this.nodeType = 'both';
     }
-
-    
-    
+ 
     return this;
 }
 
 
-function setNodemap(params,callback){
+/**************************************************
+*   Get aggregate data by building a nodemap
+*/
+function getAggregate(params, callback){
+    // include linked nodes to the result
+    function includeLinkedNodes(nodeName, result){
+        var linkedNodes = nodemap[nodeName].linkedFrom.concat(nodemap[nodeName].linkedTo);
+        linkedNodes.forEach(function(linkedNodeName){
+            // include the node when it is not in the result map yet
+            if ( !result[linkedNodeName] ){ 
+                var clone = {};
+                for ( var p in nodemap[linkedNodeName] ){
+                    if ( !(p == "linkedFrom" || p == "linkedTo") ){
+                        clone[p] = nodemap[linkedNodeName][p];
+                    }
+                }
+                result[linkedNodeName] = clone;
+            }
+        });
+    }
+
+    // get data from database
     pool.getConnection( function(err,dbConnection){
         // by default returns data from the past 24 hours
+        var searchTo = new Date(Date.now());
+        var dateOffset = (24*60*60*1000) * 1; // 1 day
+        var searchFrom = new Date();
+        searchFrom.setTime(searchFrom.getTime() - dateOffset);
+        var timeRange = searchFrom + " to " + searchTo;
+        
         var getAllquery = dbConnection.query("SELECT * FROM Connection WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW() ORDER BY source, target ");
         getAllquery
             .on("error", function(err){})
             .on("fields", function(fields){})
             .on("result", function(row){
-                var site;
-                row.timestamp = row.timestamp.valueOf();
-                // check if the source site is existed in the map, if not create one
-                if ( !nodemap[row.source] ){
-                    site = new Site(row, true);
-                    nodemap[row.source] = site;
-                }else{
-                    site = nodemap[row.source];
-                    site.update(row, true);
-                }
-                // check if the target site is existed in the map, if not create one
-                if ( !nodemap[row.target] ){
-                    site = new Site(row, false);
-                    nodemap[row.target] = site;
-                }else{
-                    site = nodemap[row.target];
-                    site.update(row, false);
+                if ( row ){
+                    var site;
+                    row.timestamp = row.timestamp.valueOf();
+                    // check if the source site is existed in the map, if not create one
+                    if ( !nodemap[row.source] ){
+                        site = new Site(row, true);
+                        nodemap[row.source] = site;
+                    }else{
+                        site = nodemap[row.source];
+                        site.update(row, true);
+                    }
+                    // check if the target site is existed in the map, if not create one
+                    if ( !nodemap[row.target] ){
+                        site = new Site(row, false);
+                        nodemap[row.target] = site;
+                    }else{
+                        site = nodemap[row.target];
+                        site.update(row, false);
+                    }
                 }
             })
             .on("end", function(){
                 if (err) { console.log("=== ERROR === " + err); }
                 if ( params.name ) {
                     var result = {};
-                    result[params.name] = nodemap[params.name];
-                    callback( result || "Cannot find in the database.");
+                    if ( nodemap[params.name] ){
+                        result[params.name] = nodemap[params.name];
+                        includeLinkedNodes(params.name, result);
+                    }
+                    callback( Object.keys(result).length != 0 ? result : "No matching records found in database from " + timeRange);
                 }else{
+                    // sort the map by the value of the howMany property
                     var arr = Object.keys(nodemap).map(function(key){
                         return [ nodemap[key].howMany, nodemap[key] ];
                     }).sort(function(a,b){
                         return b[0] - a[0];
                     });
+                    // when return, returns the top 50 nodes and their linked nodes
                     var top50 = {};
                     arr.slice(0,50).forEach(function(item){
                         top50[ item[1].name ] = item[1];
                     });
-                    callback( top50 || "Cannot find in the database.");
+                    for ( var i in top50 ){
+                        includeLinkedNodes(top50[i].name, top50);
+                    }
+                
+                    callback( Object.keys(top50).length != 0 ? top50 : "No matching records found in database from " + timeRange);
                 }
             });
     });
-}
 
-
-/**************************************************
-*   Get aggregate data
-*   Questions: subdomain? error handling, object: look for GraphNode
-*/
-function getAggregate(params, callback){
-    setNodemap(params,function(result){
-        callback(result);
-    });
 };
 
 
