@@ -13,10 +13,6 @@ app.get("/", function(req, res) {
     res.send("Hello World!");
 });
 
-
-
-var nodemap = {};
-
 function Site(conn, isSource){
     this.firstAccess = this.lastAccess = conn.timestamp;
     this.linkedFrom = [];
@@ -88,6 +84,8 @@ Site.prototype.update = function (conn, isSource){
 *   Get aggregate data by building a nodemap
 */
 function getAggregate(params, callback){
+    var nodemap = {};
+
     // include linked nodes to the result
     function includeLinkedNodes(nodeName, result){
         var linkedNodes = nodemap[nodeName].linkedFrom.concat(nodemap[nodeName].linkedTo);
