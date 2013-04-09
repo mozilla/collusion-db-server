@@ -363,6 +363,7 @@ app.post("/donateData", function(req, res){
     function postToDB(connections,callback){
         var postResponse = {};
         postResponse.rowAdded = 0;
+        postResponse.rowFailed = 0;
         pool.getConnection( function(err,dbConnection){
             var lastConnection = false;
             console.log("================= DONATE DATA START ===================");
@@ -374,14 +375,14 @@ app.post("/donateData", function(req, res){
                     if (err) {
                         console.log("=== ERROR === " + err);
                         postResponse.error = "Sorry. Error occurred. Please try again.";
+                        postResponse.rowFailed++;
                     }else{
                         postResponse.rowAdded++;
                     }
                     dbConnection.end(function(err) {
                         if (err) { console.log("=== ERROR === " + err); }
-                        console.log(i);
-                        if ( lastConnection ){ // finished posting the last connection
-                            callback(postResponse.rowAdded);
+                        if ( (postResponse.rowAdded+postResponse.rowFailed) == connections.length ){ // finished posting the last connection
+                            callback(postResponse);
                         }
                     });                     
                 });
