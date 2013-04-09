@@ -364,8 +364,10 @@ app.post("/donateData", function(req, res){
         var postResponse = {};
         postResponse.rowAdded = 0;
         pool.getConnection( function(err,dbConnection){
+            var lastConnection = false;
             console.log("================= DONATE DATA START ===================");
             for (var i=0; i<connections.length; i++){
+                if ( i == (connections.length-1) ) lastConnection = true;
                 connections[i][2] = parseInt(connections[i][2]) / 1000; // converts this UNIX time format from milliseconds to seconds
                 //avoid SQL Injection attacks by using ? as placeholders for values to be escaped
                 dbConnection.query("INSERT INTO Connection(source, target, timestamp, contentType, cookie, sourceVisited, secure, sourcePathDepth, sourceQueryDepth, sourceSub, targetSub, method, status, cacheable) VALUES (?, ?, FROM_UNIXTIME(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", connections[i], function(err, results){
@@ -377,7 +379,8 @@ app.post("/donateData", function(req, res){
                     }
                     dbConnection.end(function(err) {
                         if (err) { console.log("=== ERROR === " + err); }
-                        if ( i == (connections.length-1) ){ // finished posting the last connection
+                        console.log(i);
+                        if ( lastConnection ){ // finished posting the last connection
                             callback(postResponse.rowAdded);
                         }
                     });                     
