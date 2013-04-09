@@ -380,7 +380,8 @@ app.post("/donateData", function(req, res){
                     });                     
                 });
             }
-            console.log("================= DONATE DATA END ===================");        
+            console.log("================= DONATE DATA END ===================");
+            res.send("Successfully shared %i connections", rowAdded+);
         });     
     }
     else{
