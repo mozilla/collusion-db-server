@@ -103,16 +103,45 @@ function getAggregate(params, callback){
         });
     }
 
+
+    var timeFilter = "";
+    var valueArray = new Array();
+    if ( params.date ){
+        timeFilter = "timestamp BETWEEN TIMESTAMP(?) AND DATE_ADD( TIMESTAMP(?), INTERVAL 1 DAY ) ";
+        valueArray.push(params.date);
+        valueArray.push(params.date);
+    }
+    
+    if ( params.dateSince && params.dateBefore ){
+        timeFilter = "timestamp BETWEEN TIMESTAMP(?) AND DATE_ADD( TIMESTAMP(?), INTERVAL 1 DAY )";
+        valueArray.push(params.dateSince);
+        valueArray.push(params.dateBefore);
+    }
+    
+    if ( params.dateSince && !params.dateBefore ){
+        timeFilter = "timestamp BETWEEN TIMESTAMP(?) AND NOW()";
+        valueArray.push(params.dateSince);
+    }
+
+    if ( !params.dateSince && params.dateBefore ){
+        timeFilter = "timestamp < TIMESTAMP(?)";
+        valueArray.push(params.dateBefore);
+    }
+    
+
     // get data from database
     pool.getConnection( function(err,dbConnection){
-        // by default returns data from the past 24 hours
-        var searchTo = new Date(Date.now());
-        var dateOffset = (24*60*60*1000) * 1; // 1 day
-        var searchFrom = new Date();
-        searchFrom.setTime(searchFrom.getTime() - dateOffset);
-        var timeRange = searchFrom + " to " + searchTo;
-        
-        var getAllquery = dbConnection.query("SELECT * FROM Connection WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW() ORDER BY source, target ");
+        if ( valueArray.length > 0 ){
+            var getAllquery = dbConnection.query("SELECT * FROM Connection WHERE " + timeFilter + " ORDER BY source, target ", valueArray );
+        }else{
+            // by default returns data from the past 24 hours
+            var searchTo = new Date(Date.now());
+            var dateOffset = (24*60*60*1000) * 1; // 1 day
+            var searchFrom = new Date();
+            searchFrom.setTime(searchFrom.getTime() - dateOffset);
+            var timeRange = searchFrom + " to " + searchTo;
+            var getAllquery = dbConnection.query("SELECT * FROM Connection WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW() ORDER BY source, target " );
+        }
         getAllquery
             .on("error", function(err){})
             .on("fields", function(fields){})
@@ -146,7 +175,7 @@ function getAggregate(params, callback){
                         result[params.name] = nodemap[params.name];
                         includeLinkedNodes(params.name, result);
                     }
-                    callback( Object.keys(result).length != 0 ? result : "No matching records found in database from " + timeRange);
+                    callback( Object.keys(result).length != 0 ? result : "No matching records found in database.");
                 }else{
                     // sort the map by the value of the howMany property
                     var arr = Object.keys(nodemap).map(function(key){
@@ -163,7 +192,7 @@ function getAggregate(params, callback){
                         includeLinkedNodes(top50[i].name, top50);
                     }
                 
-                    callback( Object.keys(top50).length != 0 ? top50 : "No matching records found in database from " + timeRange);
+                    callback( Object.keys(top50).length != 0 ? top50 : "No matching records found in database.");
                 }
             });
     });
@@ -207,6 +236,10 @@ app.get("/getData", function(req,res){
         if ( req.param("aggregateData") == "true" ){
             var params = {};
             if ( req.param("name") ) params["name"] = req.param("name");
+            if ( req.param("date") ) params["date"] = req.param("date");
+            if ( req.param("dateSince") ) params["dateSince"] = req.param("dateSince");
+            if ( req.param("dateBefore") ) params["dateBefore"] = req.param("dateBefore");
+        
             getAggregate(params,function(result){
                 res.jsonp(result);
             });
