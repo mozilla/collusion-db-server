@@ -16,8 +16,13 @@ The currently accepted params are:
 
 When `aggregateData` is `true`, the additional params you can pass in are:
 * `name`: url of the site that you want to search for (eg. www.example.com)
+* `date`: date that the connection was set (YYYY-MM-DD eg. 2012-12-31)
+* `dateSince`: (if param dataBefore is not presented), returns connections that were set between dateSince and now (YYYY-MM-DD eg. 2013-02-11)
+* `dateBefore`: (if param dataSince is not presented), returns connections that were set up to and including dateBefore (YYYY-MM-DD eg. 2013-03-01)
 
-(Note that data returned is based on connections made in the last 24 hours and only the top 50 sites are returned)
+Note:
+* only the top 50 sites are returned
+* if date/dateSince/dateBefore params are omitted, data returned is based on connections made in the last 24 hours
     
 - - -
 When `aggregateData` is `false`, the additional params you can pass in are
