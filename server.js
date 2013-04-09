@@ -175,7 +175,7 @@ function getAggregate(params, callback){
                         result[params.name] = nodemap[params.name];
                         includeLinkedNodes(params.name, result);
                     }
-                    callback( Object.keys(result).length != 0 ? result : "No matching records found in database.");
+                    callback( Object.keys(result).length != 0 ? result : {});
                 }else{
                     // sort the map by the value of the howMany property
                     var arr = Object.keys(nodemap).map(function(key){
@@ -192,7 +192,7 @@ function getAggregate(params, callback){
                         includeLinkedNodes(top50[i].name, top50);
                     }
                 
-                    callback( Object.keys(top50).length != 0 ? top50 : "No matching records found in database.");
+                    callback( Object.keys(top50).length != 0 ? top50 : {});
                 }
             });
     });
