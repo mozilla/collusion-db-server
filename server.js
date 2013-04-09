@@ -131,6 +131,8 @@ function getAggregate(req, callback){
 
     // get data from database
     pool.getConnection( function(err,dbConnection){
+    
+        console.log("================= GET DATA STARTING ===================");
         if ( valueArray.length > 0 ){
             var getAllquery = dbConnection.query("SELECT * FROM Connection WHERE " + timeFilter + " ORDER BY source, target ", valueArray );
         }else{
@@ -175,6 +177,7 @@ function getAggregate(req, callback){
                         result[req.param("name")] = nodemap[req.param("name")];
                         includeLinkedNodes(req.param("name"), result);
                     }
+                    console.log("================= GET DATA END ===================");
                     callback( Object.keys(result).length != 0 ? result : {});
                 }else{
                     // sort the map by the value of the howMany property
@@ -192,6 +195,7 @@ function getAggregate(req, callback){
                         includeLinkedNodes(top50[i].name, top50);
                     }
                 
+                    console.log("================= GET DATA END ===================");
                     callback( Object.keys(top50).length != 0 ? top50 : {});
                 }
             });
