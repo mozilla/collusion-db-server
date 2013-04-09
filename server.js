@@ -364,6 +364,7 @@ app.post("/donateData", function(req, res){
         var connections = jsonObj.connections;
         var rowAdded = 0;
         pool.getConnection( function(err,dbConnection){
+            console.log("================= DONATE DATA START ===================");
             for (var i=0; i<connections.length; i++){
                 connections[i][2] = parseInt(connections[i][2]) / 1000; // converts this UNIX time format from milliseconds to seconds
                 //avoid SQL Injection attacks by using ? as placeholders for values to be escaped
@@ -371,9 +372,12 @@ app.post("/donateData", function(req, res){
                     if (err) {
                         console.log("=== ERROR === " + err);
                         res.send("Sorry. Error occurred. Please try again.");
-                    }else{ rowAdded++; }     
+                    }else{
+                        rowAdded++;
+                    }
                     dbConnection.end(function(err) {
                         if (err) { console.log("=== ERROR === " + err); }
+                        console.log("================= DONATE DATA END ===================");
                     });                     
                 });
             }        
