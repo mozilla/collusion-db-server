@@ -132,7 +132,7 @@ function getAggregate(req, callback){
     // get data from database
     pool.getConnection( function(err,dbConnection){
     
-        console.log("================= GET DATA STARTING ===================");
+        console.log("================= GET AGGREGATE DATA START ===================");
         if ( valueArray.length > 0 ){
             var getAllquery = dbConnection.query("SELECT * FROM Connection WHERE " + timeFilter + " ORDER BY source, target ", valueArray );
         }else{
@@ -177,7 +177,7 @@ function getAggregate(req, callback){
                         result[req.param("name")] = nodemap[req.param("name")];
                         includeLinkedNodes(req.param("name"), result);
                     }
-                    console.log("================= GET DATA END ===================");
+                    console.log("================= GET AGGREGATE DATA END ===================");
                     callback( Object.keys(result).length != 0 ? result : {});
                 }else{
                     // sort the map by the value of the howMany property
@@ -195,7 +195,7 @@ function getAggregate(req, callback){
                         includeLinkedNodes(top50[i].name, top50);
                     }
                 
-                    console.log("================= GET DATA END ===================");
+                    console.log("================= GET AGGREGATE DATA(TOP 50) END ===================");
                     callback( Object.keys(top50).length != 0 ? top50 : {});
                 }
             });
@@ -279,6 +279,7 @@ function getRawData(req, callback){
     
     if ( filterArray.length > 0 && valueArray.length > 0 ){
         pool.getConnection( function(err,dbConnection){
+            console.log("================= GET RAW DATA START ===================");
             var resObj = {};
             //avoid SQL Injection attacks by using ? as placeholders for values to be escaped
             var queryConfig = {
@@ -295,6 +296,7 @@ function getRawData(req, callback){
                 //disconnect dbConnection and send response when all queries are finished
                 dbConnection.end(function(err) {
                     if (err) { console.log("=== ERROR === " + err); }
+                    console.log("================= GET RAW DATA END ===================");
                     callback(resObj);
                 });
             });
