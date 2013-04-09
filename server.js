@@ -377,10 +377,10 @@ app.post("/donateData", function(req, res){
                     }
                     dbConnection.end(function(err) {
                         if (err) { console.log("=== ERROR === " + err); }
-                        console.log("================= DONATE DATA END ===================");
                     });                     
                 });
-            }        
+            }
+            console.log("================= DONATE DATA END ===================");        
         });     
     }
     else{
