@@ -377,10 +377,12 @@ app.post("/donateData", function(req, res){
                     }
                     dbConnection.end(function(err) {
                         if (err) { console.log("=== ERROR === " + err); }
+                        if ( i == connections.length-1 ){ // finished posting the last connection
+                            callback(postResponse.rowAdded);
+                        }
                     });                     
                 });
             }
-            callback(postResponse.rowAdded);
         });     
     }
     
