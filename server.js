@@ -83,9 +83,9 @@ Site.prototype.update = function (conn, isSource){
 /**************************************************
 *   Get aggregate data by building a nodemap
 */
-function getAggregate(params, callback){
+function getAggregate(req, callback){
     var nodemap = {};
-
+    
     // include linked nodes to the result
     function includeLinkedNodes(nodeName, result){
         var linkedNodes = nodemap[nodeName].linkedFrom.concat(nodemap[nodeName].linkedTo);
@@ -106,26 +106,26 @@ function getAggregate(params, callback){
 
     var timeFilter = "";
     var valueArray = new Array();
-    if ( params.date ){
+    if ( req.param("date") ){
         timeFilter = "timestamp BETWEEN TIMESTAMP(?) AND DATE_ADD( TIMESTAMP(?), INTERVAL 1 DAY ) ";
-        valueArray.push(params.date);
-        valueArray.push(params.date);
+        valueArray.push( req.param("date") );
+        valueArray.push( req.param("date") );
     }
     
-    if ( params.dateSince && params.dateBefore ){
+    if ( req.param("dateSince") && req.param("dateBefore") ){
         timeFilter = "timestamp BETWEEN TIMESTAMP(?) AND DATE_ADD( TIMESTAMP(?), INTERVAL 1 DAY )";
-        valueArray.push(params.dateSince);
-        valueArray.push(params.dateBefore);
+        valueArray.push(req.param("dateSince"));
+        valueArray.push(req.param("dateBefore"));
     }
     
-    if ( params.dateSince && !params.dateBefore ){
+    if ( req.param("dateSince") && !req.param("dateBefore") ){
         timeFilter = "timestamp BETWEEN TIMESTAMP(?) AND NOW()";
-        valueArray.push(params.dateSince);
+        valueArray.push(req.param("dateSince"));
     }
 
-    if ( !params.dateSince && params.dateBefore ){
+    if ( !req.param("dateSince") && req.param("dateBefore") ){
         timeFilter = "timestamp < TIMESTAMP(?)";
-        valueArray.push(params.dateBefore);
+        valueArray.push(req.param("dateBefore"));
     }
     
 
@@ -169,11 +169,11 @@ function getAggregate(params, callback){
             })
             .on("end", function(){
                 if (err) { console.log("=== ERROR === " + err); }
-                if ( params.name ) {
+                if ( req.param("name") ) {
                     var result = {};
-                    if ( nodemap[params.name] ){
-                        result[params.name] = nodemap[params.name];
-                        includeLinkedNodes(params.name, result);
+                    if ( nodemap[req.param("name")] ){
+                        result[req.param("name")] = nodemap[req.param("name")];
+                        includeLinkedNodes(req.param("name"), result);
                     }
                     callback( Object.keys(result).length != 0 ? result : {});
                 }else{
@@ -198,6 +198,108 @@ function getAggregate(params, callback){
     });
 
 };
+
+
+/**************************************************
+*   Get raw connection data
+*/
+function getRawData(req, callback){
+    var filterArray = new Array();
+    var valueArray = new Array();
+    var paramNum = filterArray.length;      
+    if ( req.param("source") ){
+        paramNum++;
+        if ( req.param("source").charAt(0) == "*" ){
+            filterArray.push("source LIKE ?");
+            valueArray.push("%" + req.param("source").slice(2));
+        }else{
+            filterArray.push("source = ?");
+            valueArray.push(req.param("source"));
+        }
+    }
+    
+    if ( req.param("target") ){
+        paramNum++;
+        if ( req.param("target").charAt(0) == "*" ){
+            filterArray.push("target LIKE ?");
+            valueArray.push("%" + req.param("target").slice(2));
+        }else{
+            filterArray.push("target = ?");
+            valueArray.push(req.param("target"));
+        }
+    }
+    
+    if ( req.param("date") ){
+        paramNum++;
+        filterArray.push("timestamp BETWEEN TIMESTAMP(?) AND DATE_ADD( TIMESTAMP(?), INTERVAL 1 DAY ) ");
+        valueArray.push(req.param("date"));
+        valueArray.push(req.param("date"));
+    }
+    
+    if ( req.param("dateSince") && req.param("dateBefore") ){
+        paramNum++;
+        filterArray.push("timestamp BETWEEN TIMESTAMP(?) AND DATE_ADD( TIMESTAMP(?), INTERVAL 1 DAY )");
+        valueArray.push(req.param("dateSince"));
+        valueArray.push(req.param("dateBefore"));    
+    }
+    
+    if ( req.param("dateSince") && !req.param("dateBefore") ){
+        paramNum++;
+        filterArray.push("timestamp BETWEEN TIMESTAMP(?) AND NOW()");
+        valueArray.push(req.param("dateSince"));
+    }
+
+    if ( !req.param("dateSince") && req.param("dateBefore") ){
+        paramNum++;
+        filterArray.push("timestamp < TIMESTAMP(?)");
+        valueArray.push(req.param("dateBefore"));
+    }
+           
+    if ( req.param("cookie") ){
+        paramNum++;
+        filterArray.push("cookie = ?" );
+        valueArray.push(req.param("cookie") == "true"); // convert String to Boolean
+    }
+    
+    if ( req.param("sourcevisited") ){
+        paramNum++;
+        filterArray.push("sourcevisited = ?");
+        valueArray.push(req.param("sourcevisited") == "true" );  // convert String to Boolean
+    }
+    
+    if ( req.param("secure") ){
+        paramNum++;
+        filterArray.push("secure = ?");
+        valueArray.push(req.param("secure") == "true" );  // convert String to Boolean
+    }
+    
+    if ( filterArray.length > 0 && valueArray.length > 0 ){
+        pool.getConnection( function(err,dbConnection){
+            var resObj = {};
+            //avoid SQL Injection attacks by using ? as placeholders for values to be escaped
+            var queryConfig = {
+                text: "SELECT * FROM Connection WHERE " + filterArray.join(" AND "),
+                values: valueArray
+            };
+            dbConnection.query(queryConfig.text, queryConfig.values, function(err, rows){
+                if (err) {
+                    resObj.error = "Error encountered: " + err;
+                    console.log("=== ERROR === " + err);
+                }
+                resObj.rowCount = rows.length;
+                resObj.rows = rows;
+                //disconnect dbConnection and send response when all queries are finished
+                dbConnection.end(function(err) {
+                    if (err) { console.log("=== ERROR === " + err); }
+                    callback(resObj);
+                });
+            });
+            
+        });
+    }
+}
+
+
 
 
 /**************************************************
@@ -234,113 +336,16 @@ app.get("/getData", function(req,res){
         );
     }else{
         if ( req.param("aggregateData") == "true" ){
-            var params = {};
-            if ( req.param("name") ) params["name"] = req.param("name");
-            if ( req.param("date") ) params["date"] = req.param("date");
-            if ( req.param("dateSince") ) params["dateSince"] = req.param("dateSince");
-            if ( req.param("dateBefore") ) params["dateBefore"] = req.param("dateBefore");
-        
-            getAggregate(params,function(result){
+            getAggregate(req,function(result){
                 res.jsonp(result);
             });
         }else{
-            var filterArray = new Array();
-            var valueArray = new Array();
-            var paramNum = filterArray.length;      
-            if ( req.param("source") ){
-                paramNum++;
-                if ( req.param("source").charAt(0) == "*" ){
-                    filterArray.push("source LIKE ?");
-                    valueArray.push("%" + req.param("source").slice(2));
-                }else{
-                    filterArray.push("source = ?");
-                    valueArray.push(req.param("source"));
-                }
-            }
-            
-            if ( req.param("target") ){
-                paramNum++;
-                if ( req.param("target").charAt(0) == "*" ){
-                    filterArray.push("target LIKE ?");
-                    valueArray.push("%" + req.param("target").slice(2));
-                }else{
-                    filterArray.push("target = ?");
-                    valueArray.push(req.param("target"));
-                }
-            }
-            
-            if ( req.param("date") ){
-                paramNum++;
-                filterArray.push("timestamp BETWEEN TIMESTAMP(?) AND DATE_ADD( TIMESTAMP(?), INTERVAL 1 DAY ) ");
-                valueArray.push(req.param("date"));
-                valueArray.push(req.param("date"));
-            }
-            
-            if ( req.param("dateSince") && req.param("dateBefore") ){
-                paramNum++;
-                filterArray.push("timestamp BETWEEN TIMESTAMP(?) AND DATE_ADD( TIMESTAMP(?), INTERVAL 1 DAY )");
-                valueArray.push(req.param("dateSince"));
-                valueArray.push(req.param("dateBefore"));    
-            }
-            
-            if ( req.param("dateSince") && !req.param("dateBefore") ){
-                paramNum++;
-                filterArray.push("timestamp BETWEEN TIMESTAMP(?) AND NOW()");
-                valueArray.push(req.param("dateSince"));
-            }
-
-            if ( !req.param("dateSince") && req.param("dateBefore") ){
-                paramNum++;
-                filterArray.push("timestamp < TIMESTAMP(?)");
-                valueArray.push(req.param("dateBefore"));
-            }
-                   
-            if ( req.param("cookie") ){
-                paramNum++;
-                filterArray.push("cookie = ?" );
-                valueArray.push(req.param("cookie") == "true"); // convert String to Boolean
-            }
-            
-            if ( req.param("sourcevisited") ){
-                paramNum++;
-                filterArray.push("sourcevisited = ?");
-                valueArray.push(req.param("sourcevisited") == "true" );  // convert String to Boolean
-            }
-            
-            if ( req.param("secure") ){
-                paramNum++;
-                filterArray.push("secure = ?");
-                valueArray.push(req.param("secure") == "true" );  // convert String to Boolean
-            }
-            
-            if ( filterArray.length > 0 && valueArray.length > 0 ){
-                pool.getConnection( function(err,dbConnection){
-                    var resObj = {};
-                    //avoid SQL Injection attacks by using ? as placeholders for values to be escaped
-                    var queryConfig = {
-                        text: "SELECT * FROM Connection WHERE " + filterArray.join(" AND "),
-                        values: valueArray
-                    };
-                    dbConnection.query(queryConfig.text, queryConfig.values, function(err, rows){
-                        if (err) {
-                            resObj.error = "Error encountered: " + err;
-                            console.log("=== ERROR === " + err);
-                        }
-                        resObj.rowCount = rows.length;
-                        resObj.rows = rows;
-                        //disconnect dbConnection and send response when all queries are finished
-                        dbConnection.end(function(err) {
-                            if (err) { console.log("=== ERROR === " + err); }
-                            res.jsonp(resObj);
-                        });
-                    });
-                    
-                });
-            }
+            getRawData(req,function(result){
+                res.jsonp(result);
+            });
         }
     }
 });
-
 
 
 
