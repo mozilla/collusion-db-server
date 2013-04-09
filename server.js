@@ -359,10 +359,10 @@ app.get("/getData", function(req,res){
 *   Donate data
 */
 app.post("/donateData", function(req, res){
-    var jsonObj = req.body;
-    if ( jsonObj.format === "Collusion Save File" && jsonObj.version === "1.1" ){ // check format and version
-        var connections = jsonObj.connections;
-        var rowAdded = 0;
+
+    function postToDB(connections,callback){
+        var postResponse = {};
+        postResponse.rowAdded = 0;
         pool.getConnection( function(err,dbConnection){
             console.log("================= DONATE DATA START ===================");
             for (var i=0; i<connections.length; i++){
@@ -371,22 +371,34 @@ app.post("/donateData", function(req, res){
                 dbConnection.query("INSERT INTO Connection(source, target, timestamp, contentType, cookie, sourceVisited, secure, sourcePathDepth, sourceQueryDepth, sourceSub, targetSub, method, status, cacheable) VALUES (?, ?, FROM_UNIXTIME(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", connections[i], function(err, results){
                     if (err) {
                         console.log("=== ERROR === " + err);
-                        res.send("Sorry. Error occurred. Please try again.");
+                        postResponse.error = "Sorry. Error occurred. Please try again.";
                     }else{
-                        rowAdded++;
+                        postResponse.rowAdded++;
                     }
                     dbConnection.end(function(err) {
                         if (err) { console.log("=== ERROR === " + err); }
                     });                     
                 });
             }
-            console.log("================= DONATE DATA END ===================");
-            res.send("Successfully shared " + rowAdded + " connections");
+            callback(postResponse.rowAdded);
         });     
     }
-    else{
+    
+    
+    var jsonObj = req.body;
+    if ( jsonObj.format === "Collusion Save File" && jsonObj.version === "1.1" ){ // check format and version
+        postToDB(jsonObj.connections,function(result){
+            console.log("================= DONATE DATA END ===================");
+            if ( result.error ){
+                res.send(result.error);
+            }else{
+                res.send("Successfully shared " + result.rowAdded + " connections.");
+            }
+        });
+    }else{
         res.send("Sorry. Format/version " + jsonObj.format + "/" + jsonObj.version + " not supported.");
     }
+
 });
 
 
