@@ -238,8 +238,8 @@ app.get("/getBrowseData", function(req,res){
 /**************************************************
 *   Get getVisitedWebsite query result
 */
-app.get("/getWebsiteProfile", function(req,res){
-    console.log("=== getWebsiteProfile === " + req.param("name"));
+app.get("/getSiteProfile", function(req,res){
+    console.log("=== getSiteProfile === " + req.param("name"));
     pool.getConnection( function(err,dbConnection){
         aggregate.getAggregate(req,pool,function(result){
             res.jsonp(result);
