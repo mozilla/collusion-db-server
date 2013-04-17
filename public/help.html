@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+      <meta charset="utf-8" />
+      <title>Collusion Database: No Query Made</title>
+      <link rel="stylesheet" type="text/css" href="style.css" />
+</head>
+<body>
+      <h1>Collusion Database: No Query Made</h1>
+      <div>
+             <h1>Oops!</h1>
+             The currently accepted params are:
+             <ul>
+                   <li><b>aggregateData</b>: whether or not you want the returned data to be aggregate (true/false)</li><br/>
+                   <li>When <b>aggregateData</b> is <b>true</b>, the additional params you can pass in are
+                        <br/>Note that data returned is based on connections made in the last 24 hours
+                        <ul><li><b>name</b>: url of the site that you want to search for (eg. www.example.com)</li></ul>
+                   </li><br/>
+                   <li>When <b>aggregateData</b> is <b>false</b>, the additional params you can pass in are
+                        <ul>
+                              <li><b>source</b>: domain of the requested site. (eg. www.example.com, *.example.com)</li>
+                              <li><b>target</b>: domain of the target site.  (eg. www.example.com, *.example.com)</li>
+                              <li><b>date</b>: date that the connection was set (YYYY-MM-DD eg. 2012-12-31)</li>
+                              <li><b>dateSince</b>: (if param dataBefore is not presented), returns every connection that were set between dateSince and now (YYYY-MM-DD eg. 2013-02-11)</li>
+                              <li><b>dateBefore</b>: (if param dataSince is not presented), returns every connection that were set up to and including dateBefore (YYYY-MM-DD eg. 2013-03-01)</li>
+                              <li><b>cookie</b>: whether or not any cookies were set. (true/false)</li>
+                              <li><b>sourcevisited</b>: whether or not the source was loaded by the user in a page or tab.  (true/false)</li>
+                              <li><b>secure</b>: whether or not content loaded via the HTTPS protocol.  (true/false)</li>
+                      </ul>
+                  </li>
+             </ul>
+       </div>
+</body>
+</html>
