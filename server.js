@@ -227,30 +227,9 @@ app.post("/donateData", function(req, res){
 */
 app.get("/getBrowseData", function(req,res){
     pool.getConnection( function(err,dbConnection){
-        var resObj = {};
-        var trackersQuery = "SELECT target, COUNT(distinct source) FROM Connection GROUP BY target ORDER BY COUNT(distinct source) DESC LIMIT 10";
-        var websitesQuery = "SELECT source, COUNT(distinct target), MAX(timestamp) FROM Connection where sourceVisited = true GROUP BY source ORDER BY COUNT(distinct target) DESC LIMIT 10";
-        dbConnection.query(trackersQuery, function(err, rows){
-            if (err) {
-                resObj.error = "Error encountered: " + err;
-                console.log("[ ERROR ] getBrowserData (tracker) query execution error: " + err);
-            }
-            resObj.trackers = rows;
+        aggregate.getAggregate(req,pool,function(result){
+                res.jsonp(result);
         });
-
-        dbConnection.query(websitesQuery, function(err, rows){
-            if (err) {
-                resObj.error = "Error encountered:" + err;
-                console.log("[ ERROR ] getBrowserData (website) query execution error: " + err);
-            }
-            resObj.websites = rows;
-            
-            dbConnection.end(function(err) {
-                if (err) console.log("[ ERROR ] end connection error: " + err);
-                res.jsonp(resObj);
-            });
-        });
-
     });
     
 });
@@ -259,62 +238,14 @@ app.get("/getBrowseData", function(req,res){
 /**************************************************
 *   Get getVisitedWebsite query result
 */
-app.get("/getVisitedWebsite", function(req,res){
-    console.log("=== getVisitedWebsite === " + req.param("source"));
+app.get("/getWebsiteProfile", function(req,res){
+    console.log("=== getWebsiteProfile === " + req.param("name"));
     pool.getConnection( function(err,dbConnection){
-        var resObj = {};
-
-        var queryConfig = {
-            text: "SELECT DISTINCT target, cookie FROM Connection WHERE source = ? ORDER BY target",
-            values: [ req.param("source") ]
-        };
-  
-        dbConnection.query(queryConfig.text, queryConfig.values, function(err, rows){
-            if (err) {
-                resObj.error = "Error encountered:" + err;
-                console.log("[ ERROR ] getVisitedWebsite query execution error: " + err);
-            }
-            resObj.rowCount = rows.length;
-            resObj.rows = rows;
-            dbConnection.end(function(err) {
-            if (err) { console.log("=== ERROR === " + err); }
-            res.jsonp(resObj);
-            });
-        });        
-    });
-});
-
-
-
-/**************************************************
-*   Get getThirdPartyWebsite query result
-*/
-app.get("/getThirdPartyWebsite", function(req,res){
-    console.log("=== getTracker === " + req.param("target"));
-    pool.getConnection( function(err,dbConnection){
-        var resObj = {};
-    
-        //avoid SQL Injection attacks by using ? as placeholders for values to be escaped
-        var queryConfig = {
-            text: "SELECT DISTINCT source, cookie FROM Connection WHERE target = ? ORDER BY source",
-            values: [ req.param("target") ]
-        };
-  
-        dbConnection.query(queryConfig.text, queryConfig.values, function(err, rows){
-            if (err) {
-                resObj.error = "Error encountered: " + err;
-                console.log("[ ERROR ] getThirdPartyWebsite query execution error: " + err);
-            }
-            resObj.rowCount = rows.length;
-            resObj.rows = rows;
-            dbConnection.end(function(err) {
-                if (err) { console.log("[ ERROR ] end connection error" + err); }
-                res.jsonp(resObj);
-            });
+        aggregate.getAggregate(req,pool,function(result){
+            res.jsonp(result);
         });
     });
 });
-
 
 
 
