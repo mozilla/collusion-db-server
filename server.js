@@ -112,7 +112,6 @@ function getRawData(req, callback){
                     callback(resObj);
                 });
             });
-
         });
     }
 }
@@ -181,12 +180,13 @@ app.post("/donateData", function(req, res){
 
     var jsonObj = req.body;
     if ( jsonObj.format === "Collusion Save File" && jsonObj.version === "1.1" ){ // check format and version
+        res.send('posting ' + jsonObj.connections.length + ' connections to database');
         postToDB(jsonObj.connections,function(result){
             console.log("========== DONATE DATA ENDS ==========");
             if ( result.error ){
-                res.send(result.error);
+                console.log(result.error);
             }else{
-                res.send("Successfully shared " + result.rowAdded + " connections.");
+                console.log("Successfully shared " + result.rowAdded + " connections.");
             }
         });
     }else{
