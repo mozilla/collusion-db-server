@@ -180,7 +180,6 @@ app.post("/donateData", function(req, res){
 
     var jsonObj = req.body;
     if ( jsonObj.format === "Collusion Save File" && jsonObj.version === "1.1" ){ // check format and version
-        res.send('posting ' + jsonObj.connections.length + ' connections to database');
         postToDB(jsonObj.connections,function(result){
             console.log("========== DONATE DATA ENDS ==========");
             if ( result.error ){
@@ -189,6 +188,7 @@ app.post("/donateData", function(req, res){
                 console.log("Successfully shared " + result.rowAdded + " connections.");
             }
         });
+        res.send('posting ' + jsonObj.connections.length + ' connections to database');
     }else{
         res.send("Sorry. Format/version " + jsonObj.format + "/" + jsonObj.version + " not supported.");
     }
