@@ -152,10 +152,9 @@ app.post("/donateData", function(req, res){
         postResponse.rowAdded = 0;
         postResponse.rowFailed = 0;
         pool.getConnection( function(err,dbConnection){
-            var lastConnection = false;
             console.log("========== DONATE DATA STARTS ==========");
+            postResponse.timeStart = Date.now();
             for (var i=0; i<connections.length; i++){
-                if ( i == (connections.length-1) ) lastConnection = true;
                 connections[i][2] = parseInt(connections[i][2]) / 1000; // converts this UNIX time format from milliseconds to seconds
                 //avoid SQL Injection attacks by using ? as placeholders for values to be escaped
                 dbConnection.query("INSERT INTO Connection(source, target, timestamp, contentType, cookie, sourceVisited, secure, sourcePathDepth, sourceQueryDepth, sourceSub, targetSub, method, status, cacheable) VALUES (?, ?, FROM_UNIXTIME(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", connections[i], function(err, results){
@@ -169,6 +168,7 @@ app.post("/donateData", function(req, res){
                     dbConnection.end(function(err) {
                         if (err) console.log("[ ERROR ] end connection error: " + err);
                         if ( (postResponse.rowAdded+postResponse.rowFailed) == connections.length ){ // finished posting the last connection
+                            postResponse.timeEnd = Date.now();
                             callback(postResponse);
                         }
                     });
@@ -183,9 +183,10 @@ app.post("/donateData", function(req, res){
         postToDB(jsonObj.connections,function(result){
             console.log("========== DONATE DATA ENDS ==========");
             if ( result.error ){
-                console.log(result.error);
+                console.log("[ ERROR ] " + result.error);
             }else{
-                console.log("Successfully shared " + result.rowAdded + " connections.");
+                console.log("[ Row Inserted into Table Connections ] " + result.rowAdded + " rows.");
+                logUpload(jsonObj.token, result.rowAdded, result.timeStart, result.timeEnd);
             }
         });
         res.send('posting ' + jsonObj.connections.length + ' connections to database');
@@ -194,6 +195,29 @@ app.post("/donateData", function(req, res){
     }
 
 });
+
+
+/**************************************************
+*   Log posting transaction
+*/
+
+function logUpload(token,rowInserted,timeStart,timeEnd){
+    token = token.substr(1, token.length-2); // strip the curly bracket {} that wraps token
+    var timestamp = timeStart;
+    var processTime = timeEnd - timeStart; // in milliseconds
+    pool.getConnection(function(err,dbConnection){
+        var queryConfig = {
+            text : "INSERT INTO LogUpload(token, rowInserted, timestamp, processTime) VALUES (?,?,FROM_UNIXTIME(?),?)",
+            values : [ token, rowInserted, timestamp, processTime ]
+        };
+        console.log("Logging upload transaction...");
+        dbConnection.query(queryConfig.text, queryConfig.values, function(err, result){
+            if (err) console.log("[ ERROR ] logUpload query execution error: " + err);
+            else console.log("[ Row Inserted into Table LogUpload ] Row id: " + result.insertId);
+        });    
+    });
+
+}
 
 
 
