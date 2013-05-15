@@ -70,6 +70,12 @@ function getRawData(req, callback){
         filterArray.push("timestamp < TIMESTAMP(?)");
         valueArray.push(req.param("dateBefore"));
     }
+    
+    if ( !req.param("date") && !req.param("dateSince") && !req.param("dateBefore") ){
+        paramNum++;
+        filterArray.push("timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW()");
+        valueArray.push("");
+    }
 
     if ( req.param("cookie") ){
         paramNum++;
@@ -95,7 +101,7 @@ function getRawData(req, callback){
             var resObj = {};
             //avoid SQL Injection attacks by using ? as placeholders for values to be escaped
             var queryConfig = {
-                text: "SELECT * FROM Connection WHERE " + filterArray.join(" AND "),
+                text: "SELECT * FROM Connection WHERE " + filterArray.join(" AND ") + " ORDER BY timestamp DESC " + " LIMIT 1000",
                 values: valueArray
             };
             dbConnection.query(queryConfig.text, queryConfig.values, function(err, rows){
