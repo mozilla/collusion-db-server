@@ -34,3 +34,7 @@ When `aggregateData` is `false`, the additional params you can pass in are
 * `cookie`: whether or not any cookies were set. (true/false)
 * `sourcevisited`: whether or not the source was loaded by the user in a page or tab. (true/false)
 * `secure`: whether or not content loaded via the HTTPS protocol. (true/false)
+
+Note:
+* if date/dateSince/dateBefore params are omitted, data returned is based on connections made in the last 24 hours
+* maxiumum # of rows returned is 1000 (most recent ones)
