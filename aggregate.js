@@ -111,7 +111,8 @@ exports.getAggregate = function(req, pool, callback){
 
     if ( !req.param("dateSince") && req.param("dateBefore") ){
         timeFilter = "timestamp < TIMESTAMP(?)";
-        valueArray.push(req.param("dateBefore"));
+//        valueArray.push(req.param("dateBefore"));
+        valueArray.push("2013-05-20");
     }
     
 
