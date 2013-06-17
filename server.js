@@ -19,9 +19,7 @@ const METHOD = 11;
 const STATUS = 12;
 const CACHEABLE = 13;
 
-/*
 // enable CORS ==========
-
 app.use(express.methodOverride());
  
 // ## CORS middleware
@@ -39,8 +37,8 @@ var allowCrossDomain = function(req, res, next) {
         next();
     }
 };
-app.use(allowCrossDomain);
-*/
+app.use("/shareData",allowCrossDomain);
+
 
 app.configure(function(){
     app.use(express.static(__dirname + "/public"));
@@ -190,8 +188,8 @@ app.get("/getData", function(req,res){
 /**************************************************
 *   Share data
 */
-//app.post("/shareData", function(req, res){
-app.post("/donateData", function(req, res){
+
+function shareDataHelper(req,res){
     function postToDB(connections,callback){
         var postResponse = {};
         postResponse.rowAdded = 0;
@@ -238,7 +236,16 @@ app.post("/donateData", function(req, res){
     }else{
         res.send("Sorry. Format/version " + jsonObj.format + "/" + jsonObj.version + " not supported.");
     }
+}
 
+
+// COR enabled
+app.post("/shareData", function(req, res){
+    shareDataHelper(req,res);
+});
+
+app.post("/donateData", function(req, res){
+    shareDataHelper(req,res);
 });
 
 
