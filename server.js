@@ -184,7 +184,7 @@ app.get("/getData", function(req,res){
 });
 
 
-app.get("/uniqueUsersUpload", function(req,res){
+app.get("/dashboardData", function(req,res){
     var dataReturned = {};
     pool.getConnection(function(err,dbConnection){
         var queryArray = [];
@@ -200,7 +200,7 @@ app.get("/uniqueUsersUpload", function(req,res){
                 dataReturned.error = err;
             }else{
                 dataReturned.uniqueUsersUpload = result[0][0].uniqueUsersUpload;
-                dataReturned.uniqueUsersUploadSince = new Date(result[1][0].uniqueUsersUploadSince).toString().slice(4,14);
+                dataReturned.uniqueUsersUploadSince = new Date(result[1][0].uniqueUsersUploadSince).toString().slice(4,15);
                 dataReturned.uniqueUsersUploadToday = result[2][0].uniqueUsersUploadToday;
                 dataReturned.totalConnectionsEver = result[3][0].totalConnectionsEver;
                 dataReturned.totalConnectionsToday = result[4][0].totalConnectionsToday;
