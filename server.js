@@ -45,7 +45,7 @@ app.configure(function(){
     app.use(express.bodyParser());
 });
 
-var pool = mysql.createPool(process.env.DATABASE_URL);
+var pool = mysql.createPool(process.env.DATABASE_URL+"?flags=MULTI_STATEMENTS ");
 
 app.get("/", function(req, res) {
     res.send("Hello World!");
@@ -181,6 +181,34 @@ app.get("/getData", function(req,res){
             });
         }
     }
+});
+
+
+app.get("/uniqueUsersUpload", function(req,res){
+    var dataReturned = {};
+    pool.getConnection(function(err,dbConnection){
+        var queryArray = [];
+        queryArray.push("SELECT COUNT(DISTINCT token) AS uniqueUsersUpload FROM LogUpload");
+        queryArray.push("SELECT timestamp AS uniqueUsersUploadSince FROM LogUpload WHERE id=1");
+        queryArray.push("SELECT COUNT(DISTINCT token) AS uniqueUsersUploadToday FROM LogUpload WHERE DATE(`timestamp`) = CURDATE()");
+        queryArray.push("SELECT COUNT(*) AS totalConnectionsEver FROM Connection");
+        queryArray.push("SELECT COUNT(*) AS totalConnectionsToday FROM Connection WHERE DATE(`timestamp`) = CURDATE()");
+        queryArray.push("SELECT target AS site, count(id) AS numConnections FROM Connection WHERE sourceVisited = true AND cookie = true GROUP BY target ORDER BY numConnections DESC LIMIT 10");
+        dbConnection.query(queryArray.join(";"), function(err, result){
+            if (err) {
+                console.log("[ ERROR ] dashboardData query execution error: " + err);
+                dataReturned.error = err;
+            }else{
+                dataReturned.uniqueUsersUpload = result[0][0].uniqueUsersUpload;
+                dataReturned.uniqueUsersUploadSince = new Date(result[1][0].uniqueUsersUploadSince).toString().slice(4,14);
+                dataReturned.uniqueUsersUploadToday = result[2][0].uniqueUsersUploadToday;
+                dataReturned.totalConnectionsEver = result[3][0].totalConnectionsEver;
+                dataReturned.totalConnectionsToday = result[4][0].totalConnectionsToday;
+                dataReturned.trackersArray = result[5];
+            }
+            res.jsonp(dataReturned);
+        });
+    });
 });
 
 
