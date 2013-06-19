@@ -19,6 +19,8 @@ const METHOD = 11;
 const STATUS = 12;
 const CACHEABLE = 13;
 
+const defaultTimeSpan = 7;
+
 // enable CORS ==========
 app.use(express.methodOverride());
  
@@ -59,9 +61,7 @@ app.get("/", function(req, res) {
 function getRawData(req, callback){
     var filterArray = new Array();
     var valueArray = new Array();
-    var paramNum = filterArray.length;
     if ( req.param("source") ){
-        paramNum++;
         if ( req.param("source").charAt(0) == "*" ){
             filterArray.push("source LIKE ?");
             valueArray.push("%" + req.param("source").slice(2));
@@ -72,7 +72,6 @@ function getRawData(req, callback){
     }
 
     if ( req.param("target") ){
-        paramNum++;
         if ( req.param("target").charAt(0) == "*" ){
             filterArray.push("target LIKE ?");
             valueArray.push("%" + req.param("target").slice(2));
@@ -83,51 +82,48 @@ function getRawData(req, callback){
     }
 
     if ( req.param("date") ){
-        paramNum++;
         filterArray.push("timestamp BETWEEN TIMESTAMP(?) AND DATE_ADD( TIMESTAMP(?), INTERVAL 1 DAY ) ");
         valueArray.push(req.param("date"));
         valueArray.push(req.param("date"));
     }
 
-    if ( req.param("dateSince") && req.param("dateBefore") ){
-        paramNum++;
-        filterArray.push("timestamp BETWEEN TIMESTAMP(?) AND DATE_ADD( TIMESTAMP(?), INTERVAL 1 DAY )");
+    var timeSpan = defaultTimeSpan;
+    if ( req.param("dateSince") ){
+        var timeSpanOutOfRange = ( req.param("timeSpan") < 1 ) || ( req.param("timeSpan") > timeSpan );
+        if ( timeSpanOutOfRange ){
+            callback({error: "timeSpan is in units of days. It has to be a number within 1 to 7(inclusive). A non-integer value will be rounded down to the nearest integer."});
+            return;
+        }
+        if ( req.param("timeSpan") <= timeSpan ){
+            timeSpan = req.param("timeSpan");
+        } // else timeSpan stays as default, 7
+        filterArray.push("timestamp BETWEEN TIMESTAMP(?) AND DATE_ADD( TIMESTAMP(?), INTERVAL ? DAY )");
         valueArray.push(req.param("dateSince"));
-        valueArray.push(req.param("dateBefore"));
-    }
-
-    if ( req.param("dateSince") && !req.param("dateBefore") ){
-        paramNum++;
-        filterArray.push("timestamp BETWEEN TIMESTAMP(?) AND NOW()");
         valueArray.push(req.param("dateSince"));
-    }
-
-    if ( !req.param("dateSince") && req.param("dateBefore") ){
-        paramNum++;
-        filterArray.push("timestamp < TIMESTAMP(?)");
-        valueArray.push(req.param("dateBefore"));
+        valueArray.push(timeSpan);
     }
     
-    if ( !req.param("date") && !req.param("dateSince") && !req.param("dateBefore") ){
-        paramNum++;
+    if ( req.param("timeSpan") && !req.param("dateSince") ){
+        callback({error: "timeSpan param cannot be used alone. Please specify dateSince."});
+        return;
+    }
+    
+    if ( !req.param("date") && !req.param("dateSince") ){
         filterArray.push("timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW()");
         valueArray.push("");
     }
 
     if ( req.param("cookie") ){
-        paramNum++;
         filterArray.push("cookie = ?" );
         valueArray.push(req.param("cookie") == "true"); // convert String to Boolean
     }
 
     if ( req.param("sourcevisited") ){
-        paramNum++;
         filterArray.push("sourcevisited = ?");
         valueArray.push(req.param("sourcevisited") == "true" );  // convert String to Boolean
     }
 
     if ( req.param("secure") ){
-        paramNum++;
         filterArray.push("secure = ?");
         valueArray.push(req.param("secure") == "true" );  // convert String to Boolean
     }

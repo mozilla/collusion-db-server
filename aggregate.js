@@ -1,3 +1,5 @@
+const defaultTimeSpan = 7;
+
 function Site(conn, isSource){
     this.firstAccess = this.lastAccess = conn.timestamp;
     this.linkedFrom = [];
@@ -92,28 +94,33 @@ exports.getAggregate = function(req, pool, callback){
 
     var timeFilter = "";
     var valueArray = new Array();
+    var timeSpan = defaultTimeSpan;
+    
     if ( req.param("date") ){
         timeFilter = "timestamp BETWEEN TIMESTAMP(?) AND DATE_ADD( TIMESTAMP(?), INTERVAL 1 DAY ) ";
         valueArray.push( req.param("date") );
         valueArray.push( req.param("date") );
     }
-    
-    if ( req.param("dateSince") && req.param("dateBefore") ){
-        timeFilter = "timestamp BETWEEN TIMESTAMP(?) AND DATE_ADD( TIMESTAMP(?), INTERVAL 1 DAY )";
-        valueArray.push(req.param("dateSince"));
-        valueArray.push(req.param("dateBefore"));
-    }
-    
-    if ( req.param("dateSince") && !req.param("dateBefore") ){
-        timeFilter = "timestamp BETWEEN TIMESTAMP(?) AND NOW()";
-        valueArray.push(req.param("dateSince"));
-    }
 
-    if ( !req.param("dateSince") && req.param("dateBefore") ){
-        timeFilter = "timestamp < TIMESTAMP(?)";
-        valueArray.push(req.param("dateBefore"));
+    if ( req.param("dateSince") ){
+        var timeSpanOutOfRange = ( req.param("timeSpan") < 1 ) || ( req.param("timeSpan") > timeSpan );
+        if ( timeSpanOutOfRange ){
+            callback({error: "timeSpan is in units of days. It has to be a number within 1 to 7(inclusive). A non-integer value will be rounded down to the nearest integer."});
+            return;
+        }
+        if ( req.param("timeSpan") <= timeSpan ){
+            timeSpan = req.param("timeSpan");
+        } // else timeSpan stays as default, 7
+        timeFilter = "timestamp BETWEEN TIMESTAMP(?) AND DATE_ADD( TIMESTAMP(?), INTERVAL ? DAY )";
+        valueArray.push(req.param("dateSince"));
+        valueArray.push(req.param("dateSince"));
+        valueArray.push(timeSpan);
     }
     
+    if ( req.param("timeSpan") && !req.param("dateSince") ){
+        callback({error: "timeSpan param cannot be used alone. Please specify dateSince."});
+        return;
+    }
 
     // get data from database
     pool.getConnection( function(err,dbConnection){
@@ -153,11 +160,12 @@ exports.getAggregate = function(req, pool, callback){
             })
             .on("end", function(err){
                 if (err) { console.log("[ ERROR ] end connection error" + err); }
-                if ( req.param("name") ) {
+                if ( req.param("siteURL") ) {
+                    var siteURL = req.param("siteURL");
                     var result = {};
-                    if ( nodemap[req.param("name")] ){
-                        result[req.param("name")] = nodemap[req.param("name")];
-                        includeLinkedNodes(req.param("name"), result);
+                    if ( nodemap[siteURL] ){
+                        result[siteURL] = nodemap[siteURL];
+                        includeLinkedNodes(siteURL, result);
                     }
                     console.log("========== GET AGGREGATE DATA ENDS ==========");
                     callback( Object.keys(result).length != 0 ? result : {});

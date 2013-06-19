@@ -15,10 +15,10 @@ The currently accepted params are:
 - - -
 
 When `aggregateData` is `true`, the additional params you can pass in are:
-* `name`: url of the site that you want to search for (eg. www.example.com)
+* `siteURL`: url of the site that you want to search for (eg. www.example.com)
 * `date`: date that the connection was set (YYYY-MM-DD eg. 2012-12-31)
-* `dateSince`: (if param dataBefore is not presented), returns connections that were set between dateSince and now (YYYY-MM-DD eg. 2013-02-11)
-* `dateBefore`: (if param dataSince is not presented), returns connections that were set up to and including dateBefore (YYYY-MM-DD eg. 2013-03-01)
+* `dateSince`: by default returns connections made from dateSince to 6 days onwards. Can be combined with param timeSpan if param timeSpan is presented.  (YYYY-MM-DD eg. 2013-02-11)
+* `timeSpan`: in units of days. It has to be a number within 1 to 7(inclusive). A non-integer value will be rounded down to the nearest integer. Need to be paired with the `dateSince` param.
 
 Note:
 * only the top 50 sites are returned
@@ -29,8 +29,8 @@ When `aggregateData` is `false`, the additional params you can pass in are
 * `source`: domain of the requested site. (eg. www.example.com, *.example.com)
 * `target`: domain of the target site. (eg. www.example.com, *.example.com)
 * `date`: date that the connection was set (YYYY-MM-DD eg. 2012-12-31)
-* `dateSince`: (if param dataBefore is not presented), returns connections that were set between dateSince and now (YYYY-MM-DD eg. 2013-02-11)
-* `dateBefore`: (if param dataSince is not presented), returns connections that were set up to and including dateBefore (YYYY-MM-DD eg. 2013-03-01)
+* `dateSince`: by default returns connections made from dateSince to 6 days onwards. Can be combined with param timeSpan if param timeSpan is presented.  (YYYY-MM-DD eg. 2013-02-11)
+* `timeSpan`: in units of days. It has to be a number within 1 to 7(inclusive). A non-integer value will be rounded down to the nearest integer. Need to be paired with the `dateSince` param.
 * `cookie`: whether or not any cookies were set. (true/false)
 * `sourcevisited`: whether or not the source was loaded by the user in a page or tab. (true/false)
 * `secure`: whether or not content loaded via the HTTPS protocol. (true/false)
