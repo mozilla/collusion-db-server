@@ -189,7 +189,7 @@ app.get("/dashboardData", function(req,res){
         queryArray.push("SELECT COUNT(DISTINCT token) AS uniqueUsersUploadToday FROM LogUpload WHERE DATE(`timestamp`) = CURDATE()");
         queryArray.push("SELECT COUNT(*) AS totalConnectionsEver FROM Connection");
         queryArray.push("SELECT COUNT(*) AS totalConnectionsToday FROM Connection WHERE DATE(`timestamp`) = CURDATE()");
-        queryArray.push("SELECT target AS site, count(DISTINCT source) AS numSources, count(id) as numConnections FROM Connection WHERE sourceVisited = true AND cookie = true GROUP BY target ORDER BY numSources DESC LIMIT 10");
+        queryArray.push("SELECT target AS site, count(DISTINCT source) AS numSources, count(id) as numConnections FROM Connection WHERE sourceVisited = false AND cookie = true GROUP BY target ORDER BY numSources DESC LIMIT 10");
         dbConnection.query(queryArray.join(";"), function(err, result){
             if (err) {
                 console.log("[ ERROR ] dashboardData query execution error: " + err);
