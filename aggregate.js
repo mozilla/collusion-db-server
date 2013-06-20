@@ -160,8 +160,8 @@ exports.getAggregate = function(req, pool, callback){
             })
             .on("end", function(err){
                 if (err) { console.log("[ ERROR ] end connection error" + err); }
-                if ( req.param("siteURL") ) {
-                    var siteURL = req.param("siteURL");
+                if ( req.param("name") ) {
+                    var siteURL = req.param("name");
                     var result = {};
                     if ( nodemap[siteURL] ){
                         result[siteURL] = nodemap[siteURL];
