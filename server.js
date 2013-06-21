@@ -19,7 +19,8 @@ const METHOD = 11;
 const STATUS = 12;
 const CACHEABLE = 13;
 
-const defaultTimeSpan = 7;
+const DEFAULT_TIME_SPAN = 7; // in days
+const TEN_MINS_IN_UNIX = 10 * 60 * 1000;
 
 // enable CORS ==========
 app.use(express.methodOverride());
@@ -87,7 +88,7 @@ function getRawData(req, callback){
         valueArray.push(req.param("date"));
     }
 
-    var timeSpan = defaultTimeSpan;
+    var timeSpan = DEFAULT_TIME_SPAN;
     if ( req.param("dateSince") ){
         var timeSpanOutOfRange = ( req.param("timeSpan") < 1 ) || ( req.param("timeSpan") > timeSpan );
         if ( timeSpanOutOfRange ){
@@ -181,16 +182,16 @@ app.get("/getData", function(req,res){
 
 
 app.get("/dashboardData", function(req,res){
-    var dataReturned = {};
+    var userTime = req.param("date")/1000; // UNIX time in secs
     pool.getConnection(function(err,dbConnection){
         var queryArray = [];
         queryArray.push("SELECT COUNT(DISTINCT token) AS uniqueUsersUpload FROM LogUpload");
         queryArray.push("SELECT timestamp AS uniqueUsersUploadSince FROM LogUpload WHERE id=1");
-        queryArray.push("SELECT COUNT(DISTINCT token) AS uniqueUsersUploadToday FROM LogUpload WHERE DATE(`timestamp`) = CURDATE()");
+        queryArray.push("SELECT COUNT(DISTINCT token) AS uniqueUsersUploadToday FROM LogUpload WHERE DATE(`timestamp`) = DATE(FROM_UNIXTIME(?))");
         queryArray.push("SELECT COUNT(*) AS totalConnectionsEver FROM Connection");
-        queryArray.push("SELECT COUNT(*) AS totalConnectionsToday FROM Connection WHERE DATE(`timestamp`) = CURDATE()");
+        queryArray.push("SELECT COUNT(*) AS totalConnectionsToday FROM Connection WHERE DATE(`timestamp`) = DATE(FROM_UNIXTIME(?))");
         queryArray.push("SELECT target AS site, count(DISTINCT source) AS numSources, count(id) as numConnections FROM Connection WHERE sourceVisited = false AND cookie = true GROUP BY target ORDER BY numSources DESC LIMIT 10");
-        dbConnection.query(queryArray.join(";"), function(err, result){
+        dbConnection.query(queryArray.join(";"),[ userTime, userTime ],function(err, result){
             if (err) {
                 console.log("[ ERROR ] dashboardData query execution error: " + err);
                 dataReturned.error = err;
@@ -202,6 +203,7 @@ app.get("/dashboardData", function(req,res){
                 dataReturned.totalConnectionsToday = result[4][0].totalConnectionsToday;
                 dataReturned.trackersArray = result[5];
             }
+            res.set("Cache-Control", "public, max-age="+TEN_MINS_IN_UNIX);
             res.jsonp(dataReturned);
         });
     });

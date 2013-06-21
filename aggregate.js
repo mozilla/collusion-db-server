@@ -1,4 +1,4 @@
-const defaultTimeSpan = 7;
+const DEFAULT_TIME_SPAN = 7;
 
 function Site(conn, isSource){
     this.firstAccess = this.lastAccess = conn.timestamp;
@@ -94,7 +94,7 @@ exports.getAggregate = function(req, pool, callback){
 
     var timeFilter = "";
     var valueArray = new Array();
-    var timeSpan = defaultTimeSpan;
+    var timeSpan = DEFAULT_TIME_SPAN;
     
     if ( req.param("date") ){
         timeFilter = "timestamp BETWEEN TIMESTAMP(?) AND DATE_ADD( TIMESTAMP(?), INTERVAL 1 DAY ) ";
