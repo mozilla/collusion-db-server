@@ -182,16 +182,17 @@ app.get("/getData", function(req,res){
 
 
 app.get("/dashboardData", function(req,res){
-    var userTime = req.param("date")/1000; // UNIX time in secs
+    var dataReturned = {};
+    var userTime = req.param("date")/1000 || Date.now()/1000; // UNIX time in secs
     pool.getConnection(function(err,dbConnection){
         var queryArray = [];
         queryArray.push("SELECT COUNT(DISTINCT token) AS uniqueUsersUpload FROM LogUpload");
         queryArray.push("SELECT timestamp AS uniqueUsersUploadSince FROM LogUpload WHERE id=1");
-        queryArray.push("SELECT COUNT(DISTINCT token) AS uniqueUsersUploadToday FROM LogUpload WHERE DATE(`timestamp`) = DATE(FROM_UNIXTIME(?))");
+        queryArray.push("SELECT COUNT(DISTINCT token) AS uniqueUsersUploadToday FROM LogUpload WHERE DATE(`timestamp`) = DATE(FROM_UNIXTIME("+userTime+"))");
         queryArray.push("SELECT COUNT(*) AS totalConnectionsEver FROM Connection");
-        queryArray.push("SELECT COUNT(*) AS totalConnectionsToday FROM Connection WHERE DATE(`timestamp`) = DATE(FROM_UNIXTIME(?))");
+        queryArray.push("SELECT COUNT(*) AS totalConnectionsToday FROM Connection WHERE DATE(`timestamp`) = DATE(FROM_UNIXTIME("+userTime+"))");
         queryArray.push("SELECT target AS site, count(DISTINCT source) AS numSources, count(id) as numConnections FROM Connection WHERE sourceVisited = false AND cookie = true GROUP BY target ORDER BY numSources DESC LIMIT 10");
-        dbConnection.query(queryArray.join(";"),[ userTime, userTime ],function(err, result){
+        dbConnection.query(queryArray.join(";"),function(err, result){
             if (err) {
                 console.log("[ ERROR ] dashboardData query execution error: " + err);
                 dataReturned.error = err;
