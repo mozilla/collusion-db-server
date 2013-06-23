@@ -1,6 +1,8 @@
 var express = require("express");
 var app = express();
 var mysql = require("mysql");
+var redis = require("redis");
+var client;
 var aggregate = require("./aggregate.js");
 
 // Constants for indexes of properties in array format
@@ -20,7 +22,6 @@ const STATUS = 12;
 const CACHEABLE = 13;
 
 const DEFAULT_TIME_SPAN = 7; // in days
-const TEN_MINS_IN_UNIX = 10 * 60 * 1000;
 
 // enable CORS ==========
 app.use(express.methodOverride());
@@ -48,12 +49,28 @@ app.configure(function(){
     app.use(express.bodyParser());
 });
 
+if (process.env.REDISTOGO_URL) {
+    var rtg = require("url").parse(process.env.REDISTOGO_URL);
+    client = redis.createClient(rtg.port, rtg.hostname);
+    redis.auth(rtg.auth.split(":")[1]);
+} else {
+    client = redis.createClient();
+}
+
 var pool = mysql.createPool(process.env.DATABASE_URL+"?flags=MULTI_STATEMENTS ");
 
 app.get("/", function(req, res) {
     res.send("Hello World!");
 });
 
+
+client.on("ready", function (msg) {
+    console.log("[ Redis Ready ] " + ( msg || ""));
+});
+
+client.on("error", function (err) {
+    console.log("[ Redis Error ] " + err);
+});
 
 
 /**************************************************
@@ -182,8 +199,46 @@ app.get("/getData", function(req,res){
 
 
 app.get("/dashboardData", function(req,res){
-    var dataReturned = {};
     var userTime = req.param("date")/1000 || Date.now()/1000; // UNIX time in secs
+    
+    client.hgetall("dashboard", function(err,reply){
+        if ( reply ){
+            console.log("=REDIS=====");
+            var data = {};
+            var trackersArray = [];
+            for ( var key in reply ){
+                if ( key.substr(0,7) == "tracker" ){
+                    var index = key.charAt(7);
+                    trackersArray[index] = JSON.parse(reply[key]);
+                }else{
+                   data[key] = reply[key];
+                }
+                data["trackersArray"] = trackersArray;
+            }
+            res.jsonp(data);
+        }else{
+            console.log("=DATABASE=====");
+            dbDashbaordData(userTime,function(data){
+                for ( var key in data ){
+                    if ( Array.isArray(data[key]) ){
+                        data[key].forEach(function(item,i){
+                            client.hset("dashboard", "tracker"+i, JSON.stringify(item));
+                        });
+                    }else{
+                        client.hset("dashboard", key, data[key]);
+                    }
+                }
+                client.expire("dashboard", 10 * 60 ); // expires every 10 mins
+                res.jsonp(data);
+            });
+        }
+    });
+});
+
+
+function dbDashbaordData(userTime,callback){
+    var dataReturned = {};
+    
     pool.getConnection(function(err,dbConnection){
         var queryArray = [];
         queryArray.push("SELECT COUNT(DISTINCT token) AS uniqueUsersUpload FROM LogUpload");
@@ -204,12 +259,10 @@ app.get("/dashboardData", function(req,res){
                 dataReturned.totalConnectionsToday = result[4][0].totalConnectionsToday;
                 dataReturned.trackersArray = result[5];
             }
-            res.set("Cache-Control", "public, max-age="+TEN_MINS_IN_UNIX);
-            res.jsonp(dataReturned);
+            callback(dataReturned);
         });
     });
-});
-
+}
 
 
 /**************************************************
