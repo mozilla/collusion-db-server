@@ -49,7 +49,7 @@ app.configure(function(){
     app.use(express.bodyParser());
 });
 
-if (process.env.REDISTOGO_URL) {
+if (process.env.REDISCLOUD_URL) {
     var redisURL = require("url").parse(process.env.REDISCLOUD_URL);
     client = redis.createClient(redisURL.port, redisURL.hostname);
     client.auth(redisURL.auth.split(":")[1]);
