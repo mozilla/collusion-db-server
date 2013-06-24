@@ -1,3 +1,7 @@
+if ( process.env.NEW_RELIC_HOME ) {
+  require( 'newrelic' );
+}
+
 var express = require("express");
 var app = express();
 var mysql = require("mysql");
@@ -25,14 +29,14 @@ const DEFAULT_TIME_SPAN = 7; // in days
 
 // enable CORS ==========
 app.use(express.methodOverride());
- 
+
 // ## CORS middleware
 // based on https://gist.github.com/cuppster/2344435
 var allowCrossDomain = function(req, res, next) {
     res.header("Access-Control-Allow-Origin", "resource://jid1-7obidhpw1yapaq-at-jetpack");
     res.header("Access-Control-Allow-Methods", "POST");
     res.header("Access-Control-Allow-Headers", "Content-Type, Collusion-Share-Data");
-      
+
     // intercept OPTIONS method
     if ("OPTIONS" == req.method) {
         res.send(200);
@@ -120,12 +124,12 @@ function getRawData(req, callback){
         valueArray.push(req.param("dateSince"));
         valueArray.push(timeSpan);
     }
-    
+
     if ( req.param("timeSpan") && !req.param("dateSince") ){
         callback({error: "timeSpan param cannot be used alone. Please specify dateSince."});
         return;
     }
-    
+
     if ( !req.param("date") && !req.param("dateSince") ){
         filterArray.push("timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW()");
         valueArray.push("");
@@ -200,7 +204,7 @@ app.get("/getData", function(req,res){
 
 app.get("/dashboardData", function(req,res){
     var userTime = req.param("date")/1000 || Date.now()/1000; // UNIX time in secs
-    
+
     client.hgetall("dashboard", function(err,reply){
         if ( reply ){
             console.log("=REDIS=====");
@@ -238,7 +242,7 @@ app.get("/dashboardData", function(req,res){
 
 function dbDashbaordData(userTime,callback){
     var dataReturned = {};
-    
+
     pool.getConnection(function(err,dbConnection){
         var queryArray = [];
         queryArray.push("SELECT COUNT(DISTINCT token) AS uniqueUsersUpload FROM LogUpload");
@@ -346,7 +350,7 @@ function logUpload(token,rowInserted,timeStart,timeEnd){
         dbConnection.query(queryConfig.text, queryConfig.values, function(err, result){
             if (err) console.log("[ ERROR ] logUpload query execution error: " + err);
             else console.log("[ Row Inserted into Table LogUpload ] Row id: " + result.insertId);
-        });    
+        });
     });
 
 }
