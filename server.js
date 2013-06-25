@@ -1,9 +1,9 @@
 var express = require("express");
 var app = express();
 var mysql = require("mysql");
-var redis = require("redis");
-var client;
 var aggregate = require("./aggregate.js");
+var Memcached = require('memcached');
+var memcached = new Memcached(process.env.MEMCACHIER_SERVERS);
 
 // Constants for indexes of properties in array format
 const SOURCE = 0;
@@ -20,8 +20,9 @@ const TARGET_SUB = 10;
 const METHOD = 11;
 const STATUS = 12;
 const CACHEABLE = 13;
-
+// ===
 const DEFAULT_TIME_SPAN = 7; // in days
+const CACHE_EXPIRE_TIME = 15*60*1000; // 15 minutes in milliseconds
 
 // enable CORS ==========
 app.use(express.methodOverride());
@@ -49,27 +50,10 @@ app.configure(function(){
     app.use(express.bodyParser());
 });
 
-if (process.env.REDISCLOUD_URL) {
-    var redisURL = require("url").parse(process.env.REDISCLOUD_URL);
-    client = redis.createClient(redisURL.port, redisURL.hostname);
-    client.auth(redisURL.auth.split(":")[1]);
-} else {
-    client = redis.createClient();
-}
-
 var pool = mysql.createPool(process.env.DATABASE_URL+"?flags=MULTI_STATEMENTS ");
 
 app.get("/", function(req, res) {
     res.send("Hello World!");
-});
-
-
-client.on("ready", function (msg) {
-    console.log("[ Redis Ready ] " + ( msg || ""));
-});
-
-client.on("error", function (err) {
-    console.log("[ Redis Error ] " + err);
 });
 
 
@@ -198,69 +182,63 @@ app.get("/getData", function(req,res){
 });
 
 
-app.get("/dashboardData", function(req,res){
-    var userTime = req.param("date")/1000 || Date.now()/1000; // UNIX time in secs
-    
-    client.hgetall("dashboard", function(err,reply){
-        if ( reply ){
-            console.log("=REDIS=====");
-            var data = {};
-            var trackersArray = [];
-            for ( var key in reply ){
-                if ( key.substr(0,7) == "tracker" ){
-                    var index = key.charAt(7);
-                    trackersArray[index] = JSON.parse(reply[key]);
-                }else{
-                   data[key] = reply[key];
-                }
-                data["trackersArray"] = trackersArray;
+/**************************************************
+*   Dashboard Data
+*/
+
+var updateDataboardData = function(){
+    dbDashbaordData();
+};
+
+dbDashbaordData(function(){
+    app.get("/dashboardData", function(req,res){
+        memcached.get("dashboard", function(err,value){
+            if ( value ){
+                res.jsonp(JSON.parse(value));
+            }else{
+                res.jsonp({});
             }
-            res.jsonp(data);
-        }else{
-            console.log("=DATABASE=====");
-            dbDashbaordData(userTime,function(data){
-                for ( var key in data ){
-                    if ( Array.isArray(data[key]) ){
-                        data[key].forEach(function(item,i){
-                            client.hset("dashboard", "tracker"+i, JSON.stringify(item));
-                        });
-                    }else{
-                        client.hset("dashboard", key, data[key]);
-                    }
-                }
-                client.expire("dashboard", 10 * 60 ); // expires every 10 mins
-                res.jsonp(data);
-            });
-        }
-    });
+        });
+    });  
 });
 
+setInterval(updateDataboardData, 15*60*1000); // runs every 15 mins, in milliseconds
 
-function dbDashbaordData(userTime,callback){
+function dbDashbaordData(callback){
     var dataReturned = {};
     
     pool.getConnection(function(err,dbConnection){
-        var queryArray = [];
-        queryArray.push("SELECT COUNT(DISTINCT token) AS uniqueUsersUpload FROM LogUpload");
-        queryArray.push("SELECT timestamp AS uniqueUsersUploadSince FROM LogUpload WHERE id=1");
-        queryArray.push("SELECT COUNT(DISTINCT token) AS uniqueUsersUploadToday FROM LogUpload WHERE DATE(`timestamp`) = DATE(FROM_UNIXTIME("+userTime+"))");
-        queryArray.push("SELECT COUNT(*) AS totalConnectionsEver FROM Connection");
-        queryArray.push("SELECT COUNT(*) AS totalConnectionsToday FROM Connection WHERE DATE(`timestamp`) = DATE(FROM_UNIXTIME("+userTime+"))");
-        queryArray.push("SELECT target AS site, count(DISTINCT source) AS numSources, count(id) as numConnections FROM Connection WHERE sourceVisited = false AND cookie = true GROUP BY target ORDER BY numSources DESC LIMIT 10");
-        dbConnection.query(queryArray.join(";"),function(err, result){
-            if (err) {
-                console.log("[ ERROR ] dashboardData query execution error: " + err);
-                dataReturned.error = err;
-            }else{
-                dataReturned.uniqueUsersUpload = result[0][0].uniqueUsersUpload;
-                dataReturned.uniqueUsersUploadSince = new Date(result[1][0].uniqueUsersUploadSince).toString().slice(4,15);
-                dataReturned.uniqueUsersUploadToday = result[2][0].uniqueUsersUploadToday;
-                dataReturned.totalConnectionsEver = result[3][0].totalConnectionsEver;
-                dataReturned.totalConnectionsToday = result[4][0].totalConnectionsToday;
-                dataReturned.trackersArray = result[5];
-            }
-            callback(dataReturned);
-        });
+        if ( err ){
+            callback(false);
+        }else{
+            var queryArray = [];
+            queryArray.push("SELECT COUNT(DISTINCT token) AS uniqueUsersUpload FROM LogUpload");
+            queryArray.push("SELECT timestamp AS uniqueUsersUploadSince FROM LogUpload WHERE id=1");
+            queryArray.push("SELECT COUNT(DISTINCT token) AS uniqueUsersUploadLast24H FROM LogUpload WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW()");
+            queryArray.push("SELECT COUNT(*) AS totalConnectionsEver FROM Connection");
+            queryArray.push("SELECT COUNT(*) AS totalConnectionsLast24H FROM Connection WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW()");
+            queryArray.push("SELECT target AS site, count(DISTINCT source) AS numSources, count(id) as numConnections FROM Connection WHERE sourceVisited = false AND cookie = true GROUP BY target ORDER BY numSources DESC LIMIT 10");
+            dbConnection.query(queryArray.join(";"),function(err, results){
+                if (err) {
+                    console.log("[ ERROR ] dashboardData query execution error: " + err);
+                    dataReturned.error = err;
+                }else{
+                    dataReturned.uniqueUsersUpload = results[0][0].uniqueUsersUpload;
+                    dataReturned.uniqueUsersUploadSince = new Date(results[1][0].uniqueUsersUploadSince).toString().slice(4,15);
+                    dataReturned.uniqueUsersUploadLast24H = results[2][0].uniqueUsersUploadLast24H;
+                    dataReturned.totalConnectionsEver = results[3][0].totalConnectionsEver;
+                    dataReturned.totalConnectionsLast24H = results[4][0].totalConnectionsLast24H;
+                    dataReturned.trackersArray = results[5];
+
+                    memcached.set("dashboard", JSON.stringify(dataReturned), CACHE_EXPIRE_TIME, function(err){
+                        if ( err ){
+                            console.log(err);
+                        }
+                    });
+                }
+                callback(true);
+            });
+        }
     });
 }
 

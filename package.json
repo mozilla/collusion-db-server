@@ -4,8 +4,7 @@
   "dependencies": {
     "express": "3.x",
     "mysql": "latest",
-    "redis": "latest",
-    "hiredis": "latest"
+    "memcached": "latest"
   },
   "engines": {
     "node": "0.10.x",
