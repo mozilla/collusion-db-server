@@ -190,30 +190,27 @@ app.get("/getData", function(req,res){
 *   Dashboard Data
 */
 
-var updateDataboardData = function(){
-    dbDashbaordData();
-};
+var dashboardQueryRunning = false;
+var dashboardQueue = [];
 
-dbDashbaordData(function(){
-    app.get("/dashboardData", function(req,res){
-        memcached.get("dashboard", function(err,value){
-            if ( value ){
-                res.jsonp(JSON.parse(value));
-            }else{
-                res.jsonp({});
-            }
-        });
-    });  
-});
+function addDataToMemcached(key, value, callback){
+    if ( typeof value == "object" ){
+        value = JSON.stringify(value);
+    }
+    memcached.set(key, value, CACHE_EXPIRE_TIME, function(err){
+        if ( err ){
+            console.log("[ Memcached Set Error ] " + err);
+        }
+        callback(true);
+    });
+}
 
-setInterval(updateDataboardData, 15*60*1000); // runs every 15 mins, in milliseconds
-
-function dbDashbaordData(callback){
+var dbDashbaordData = function(callback){
+    dashboardQueryRunning = true;
     var dataReturned = {};
-
     pool.getConnection(function(err,dbConnection){
         if ( err ){
-            callback(false);
+            callback();
         }else{
             var queryArray = [];
             queryArray.push("SELECT COUNT(DISTINCT token) AS uniqueUsersUpload FROM LogUpload");
@@ -233,18 +230,36 @@ function dbDashbaordData(callback){
                     dataReturned.totalConnectionsEver = results[3][0].totalConnectionsEver;
                     dataReturned.totalConnectionsLast24H = results[4][0].totalConnectionsLast24H;
                     dataReturned.trackersArray = results[5];
-
-                    memcached.set("dashboard", JSON.stringify(dataReturned), CACHE_EXPIRE_TIME, function(err){
-                        if ( err ){
-                            console.log(err);
-                        }
-                    });
                 }
-                callback(true);
+                callback(dataReturned);
             });
         }
     });
 }
+
+setInterval(dbDashbaordData, 15*60*1000); // runs every 15 mins, in milliseconds
+
+app.get("/dashboardData", function(req,res){
+    memcached.get("dashboard", function(err,value){
+        if ( value ){
+            res.jsonp(JSON.parse(value));
+        }else{
+            dashboardQueue.push(res);
+            if ( !dashboardQueryRunning ){
+                dbDashbaordData(function(data){
+                    dashboardQueryRunning = false;
+                    addDataToMemcached("dashboard", data, function(finished){
+                        while ( dashboardQueue.length > 0 ){
+                            dashboardQueue.pop().jsonp(data);
+                        }
+                    });
+
+                });   
+            }
+        }
+    });
+});  
+
 
 
 /**************************************************
