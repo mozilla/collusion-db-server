@@ -4,8 +4,8 @@
   "dependencies": {
     "express": "3.x",
     "mysql": "latest",
-    "memcached": "latest",
-    "hiredis": "latest"
+    "memjs": "latest",
+    "newrelic": "~0.9.21"
   },
   "engines": {
     "node": "0.10.x",

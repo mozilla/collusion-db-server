@@ -5,9 +5,10 @@ if ( process.env.NEW_RELIC_HOME ) {
 var express = require("express");
 var app = express();
 var mysql = require("mysql");
+var pool = mysql.createPool(process.env.DATABASE_URL+"?flags=MULTI_STATEMENTS ");
 var aggregate = require("./aggregate.js");
-var Memcached = require('memcached');
-var memcached = new Memcached(process.env.MEMCACHIER_SERVERS);
+var memjs = require('memjs')
+var client = memjs.Client.create()
 
 // Constants for indexes of properties in array format
 const SOURCE = 0;
@@ -26,7 +27,7 @@ const STATUS = 12;
 const CACHEABLE = 13;
 // ===
 const DEFAULT_TIME_SPAN = 7; // in days
-const CACHE_EXPIRE_TIME = 15*60*1000; // 15 minutes in milliseconds
+const CACHE_EXPIRE_TIME = 15*60; // 15 minutes in seconds
 
 // enable CORS ==========
 app.use(express.methodOverride());
@@ -37,28 +38,39 @@ var allowCrossDomain = function(req, res, next) {
     res.header("Access-Control-Allow-Origin", "resource://jid1-7obidhpw1yapaq-at-jetpack");
     res.header("Access-Control-Allow-Methods", "POST");
     res.header("Access-Control-Allow-Headers", "Content-Type, Collusion-Share-Data");
-
-    // intercept OPTIONS method
     if ("OPTIONS" == req.method) {
         res.send(200);
-    }
-    else {
+    }else{
         next();
     }
 };
 app.use("/shareData",allowCrossDomain);
-
 
 app.configure(function(){
     app.use(express.static(__dirname + "/public"));
     app.use(express.bodyParser());
 });
 
-var pool = mysql.createPool(process.env.DATABASE_URL+"?flags=MULTI_STATEMENTS ");
-
 app.get("/", function(req, res) {
     res.send("Hello World!");
 });
+
+
+/**************************************************
+*   Memcached
+*/
+function addDataToMemcached(key, value, callback){
+    if ( typeof value === "object" ){
+        value = JSON.stringify(value);
+    }
+    //client.set(key, value, callback, lifetime, flags)
+    client.set(key, value, function(err){
+        if ( err ){
+            console.log("[ Memcached Set Error ] " + err);
+        }
+        callback(value);
+    }, CACHE_EXPIRE_TIME);
+}
 
 
 /**************************************************
@@ -193,19 +205,7 @@ app.get("/getData", function(req,res){
 var dashboardQueryRunning = false;
 var dashboardQueue = [];
 
-function addDataToMemcached(key, value, callback){
-    if ( typeof value == "object" ){
-        value = JSON.stringify(value);
-    }
-    memcached.set(key, value, CACHE_EXPIRE_TIME, function(err){
-        if ( err ){
-            console.log("[ Memcached Set Error ] " + err);
-        }
-        callback(true);
-    });
-}
-
-var dbDashbaordData = function(callback){
+var dbDashboardQuery = function(callback){
     dashboardQueryRunning = true;
     var dataReturned = {};
     pool.getConnection(function(err,dbConnection){
@@ -237,29 +237,33 @@ var dbDashbaordData = function(callback){
     });
 }
 
-setInterval(dbDashbaordData, 15*60*1000); // runs every 15 mins, in milliseconds
+var dashboardCallback = function(data){
+    while ( dashboardQueue.length > 0 ){
+        dashboardQueue.shift().jsonp(data);
+    }
+}
+
+var runDashboardQuery = function(){
+    dbDashboardQuery(function(data){
+        dashboardQueryRunning = false;
+        addDataToMemcached("dashboard", data, dashboardCallback);
+    });
+}
 
 app.get("/dashboardData", function(req,res){
-    memcached.get("dashboard", function(err,value){
+    client.get("dashboard", function(err,value){
         if ( value ){
             res.jsonp(JSON.parse(value));
         }else{
             dashboardQueue.push(res);
             if ( !dashboardQueryRunning ){
-                dbDashbaordData(function(data){
-                    dashboardQueryRunning = false;
-                    addDataToMemcached("dashboard", data, function(finished){
-                        while ( dashboardQueue.length > 0 ){
-                            dashboardQueue.pop().jsonp(data);
-                        }
-                    });
-
-                });   
+                runDashboardQuery();
             }
         }
     });
 });  
 
+setInterval(runDashboardQuery, 15*60*1000); // runs every 15 mins, in milliseconds
 
 
 /**************************************************
