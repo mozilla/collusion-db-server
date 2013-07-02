@@ -263,7 +263,7 @@ app.get("/dashboardData", function(req,res){
     });
 });  
 
-setInterval(runDashboardQuery, 15*60*1000); // runs every 15 mins, in milliseconds
+setInterval(runDashboardQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
 
 
 /**************************************************
@@ -380,6 +380,85 @@ app.get("/getSiteProfile", function(req,res){
     });
 });
 
+
+// === For the New Website ============================================================================
+
+
+/**************************************************
+*   Get databaseSiteList query result
+*/
+
+var databaseSiteListQueryRunning = false;
+var databaseSiteListQueue = [];
+
+function dbDatabaseSiteListQuery(callback){
+    var queryArray = [];
+    var top10Query = "SELECT target AS site, count(DISTINCT source) AS numSources, count(id) as numConnections FROM Connection " + 
+                        "WHERE sourceVisited = false AND cookie = true GROUP BY target ORDER BY numSources DESC LIMIT 10";
+    var sitesQuery = 
+        "SELECT source AS site, count(DISTINCT target) AS numConnectedSites, count(id) as numConnections " + 
+        "FROM Connection " +
+        "GROUP BY source " +
+        "UNION ALL " +
+        "SELECT target AS site, count(DISTINCT source) AS numConnectedSites, count(id) as numConnections " + 
+        "FROM Connection " +
+        "GROUP BY target " +
+        "ORDER BY numConnectedSites DESC LIMIT 20";
+
+    queryArray.push(sitesQuery);
+    queryArray.push(top10Query);
+
+    pool.getConnection(function(connectionErr,dbConnection){
+        if ( connectionErr ){
+            callback();
+        }else{
+            dbConnection.query(queryArray.join(";"), function(err, results){
+                if (err) console.log("[ ERROR ] databaseSiteList query execution error: " + err);
+                callback(results);
+            });
+        }
+    });
+}
+
+var databaseSiteListCallback = function(data){
+    while ( databaseSiteListQueue.length > 0 ){
+        databaseSiteListQueue.shift().jsonp(data);
+    }
+}
+
+var runDatabaseSiteListQuery = function(){
+    dbDatabaseSiteListQuery(function(data){
+        databaseSiteListQueryRunning = false;
+        addDataToMemcached("databaseSiteList", data, databaseSiteListCallback);
+    });
+}
+
+app.get("/databaseSiteList", function(req,res){
+    client.get("databaseSiteList", function(err,value){
+        if ( value ){
+            res.jsonp(JSON.parse(value));
+        }else{
+            databaseSiteListQueue.push(res);
+            if ( !databaseSiteListQueryRunning ){
+                runDatabaseSiteListQuery();
+            }
+        }
+    });
+});
+
+setInterval(runDatabaseSiteListQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
+
+/**************************************************
+*   Get getSiteProfileNew query result
+*/
+app.get("/getSiteProfileNew", function(req,res){
+    console.log("=== getSiteProfile === " + req.param("name"));
+    pool.getConnection( function(err,dbConnection){
+        aggregate.getAggregate(req,pool,function(result){
+            res.jsonp(result);
+        });
+    });
+});
 
 app.listen(process.env.PORT, function() {
     console.log("Listening on " + process.env.PORT);
