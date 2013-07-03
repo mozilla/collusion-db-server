@@ -359,12 +359,9 @@ function logUpload(token,rowInserted,timeStart,timeEnd){
 *   Get getBrowseData query result
 */
 app.get("/getBrowseData", function(req,res){
-    pool.getConnection( function(err,dbConnection){
-        aggregate.getAggregate(req,pool,function(result){
-            res.jsonp(result);
-        });
+    aggregate.getAggregate(req,pool,function(result){
+        res.jsonp(result);
     });
-
 });
 
 
@@ -373,10 +370,8 @@ app.get("/getBrowseData", function(req,res){
 */
 app.get("/getSiteProfile", function(req,res){
     console.log("=== getSiteProfile === " + req.param("name"));
-    pool.getConnection( function(err,dbConnection){
-        aggregate.getAggregate(req,pool,function(result){
-            res.jsonp(result);
-        });
+    aggregate.getAggregate(req,pool,function(result){
+        res.jsonp(result);
     });
 });
 

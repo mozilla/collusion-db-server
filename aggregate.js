@@ -1,4 +1,5 @@
 const DEFAULT_TIME_SPAN = 7;
+var nodemap = {};
 
 function Site(conn, isSource){
     this.firstAccess = this.lastAccess = conn.timestamp;
@@ -69,29 +70,10 @@ Site.prototype.update = function (conn, isSource){
 
 
 /**************************************************
-*   Get aggregate data by building a nodemap
+*   Get and Return Aggregated Data 
 */
 exports.getAggregate = function(req, pool, callback){
-    var nodemap = {};
-    
-    // include linked nodes to the result
-    function includeLinkedNodes(nodeName, result){
-        var linkedNodes = nodemap[nodeName].linkedFrom.concat(nodemap[nodeName].linkedTo);
-        linkedNodes.forEach(function(linkedNodeName){
-            // include the node when it hasn't been added to the result map
-            if ( !result[linkedNodeName] ){ 
-                var clone = {};
-                for ( var p in nodemap[linkedNodeName] ){
-                    if ( !(p == "linkedFrom" || p == "linkedTo") ){
-                        clone[p] = nodemap[linkedNodeName][p];
-                    }
-                }
-                result[linkedNodeName] = clone;
-            }
-        });
-    }
-
-
+    var query = "";
     var timeFilter = "";
     var valueArray = new Array();
     var timeSpan = DEFAULT_TIME_SPAN;
@@ -122,73 +104,124 @@ exports.getAggregate = function(req, pool, callback){
         return;
     }
 
-    // get data from database
-    pool.getConnection( function(err,dbConnection){
-    
-        console.log("========== GET AGGREGATE DATA STARTS ==========");
+    pool.getConnection(function(err,dbConnection){
         if ( valueArray.length > 0 ){
-            var getAllquery = dbConnection.query("SELECT * FROM Connection WHERE " + timeFilter + " ORDER BY source, target ", valueArray );
+            query = dbConnection.query("SELECT * FROM Connection WHERE " + timeFilter + " ORDER BY source, target ", valueArray );
         }else{
-            var getAllquery = dbConnection.query("SELECT * FROM Connection WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW() ORDER BY source, target " );
+            query = dbConnection.query("SELECT * FROM Connection WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW() ORDER BY source, target " );
         }
-        getAllquery
-            .on("error", function(err){
-                if (err)  console.log("[ ERROR ] getAggregate query execution error: " + err);
-            })
-            .on("fields", function(fields){})
-            .on("result", function(row){
-                if ( row ){
-                    var site;
-                    row.timestamp = row.timestamp.valueOf();
-                    // check if the source site is existed in the map, if not create one
-                    if ( !nodemap[row.source] ){
-                        site = new Site(row, true);
-                        nodemap[row.source] = site;
-                    }else{
-                        site = nodemap[row.source];
-                        site.update(row, true);
-                    }
-                    // check if the target site is existed in the map, if not create one
-                    if ( !nodemap[row.target] ){
-                        site = new Site(row, false);
-                        nodemap[row.target] = site;
-                    }else{
-                        site = nodemap[row.target];
-                        site.update(row, false);
-                    }
-                }
-            })
-            .on("end", function(err){
-                if (err) { console.log("[ ERROR ] end connection error" + err); }
-                if ( req.param("name") ) {
-                    var siteURL = req.param("name");
-                    var result = {};
-                    if ( nodemap[siteURL] ){
-                        result[siteURL] = nodemap[siteURL];
-                        includeLinkedNodes(siteURL, result);
-                    }
-                    console.log("========== GET AGGREGATE DATA ENDS ==========");
-                    callback( Object.keys(result).length != 0 ? result : {});
-                }else{
-                    // sort the map by the value of the howMany property
-                    var arr = Object.keys(nodemap).map(function(key){
-                        return [ nodemap[key].howMany, nodemap[key] ];
-                    }).sort(function(a,b){
-                        return b[0] - a[0];
-                    });
-                    // when return, returns the top 50 nodes and their linked nodes
-                    var top50 = {};
-                    arr.slice(0,50).forEach(function(item){
-                        top50[ item[1].name ] = item[1];
-                    });
-                    for ( var i in top50 ){
-                        includeLinkedNodes(top50[i].name, top50);
-                    }
-                
-                    console.log("========== GET AGGREGATE DATA(TOP 50) ENDS ==========");
-                    callback( Object.keys(top50).length != 0 ? top50 : {});
-                }
-            });
+        dbAggregateDataQuery(req.param("name"),dbConnection,query,function(data){
+            callback(data);
+        });
     });
-
 };
+
+
+/**************************************************
+*   Get Aggregated Data from Database
+*/
+function dbAggregateDataQuery(siteName,dbConnection,query,callback){
+    // get data from database
+    console.log("========== GET AGGREGATE DATA STARTS ==========");
+    query
+        .on("error", function(err){
+            if (err)  console.log("[ ERROR ] getAggregate query execution error: " + err);
+        })
+        .on("fields", function(fields){})
+        .on("result", function(row){
+            if ( row ){
+                buildNodemap(row);
+            }
+        })
+        .on("end", function(err){
+            if (err) { 
+                console.log("[ ERROR ] end connection error" + err); 
+            }
+            var data = filterNodemapData(siteName);
+            callback(data);
+        });
+}
+
+
+/**************************************************
+*   Build nodemap 
+*/
+function buildNodemap(connection){
+    var site;
+    connection.timestamp = connection.timestamp.valueOf();
+    // check if the source site is existed in the map, if not create one
+    if ( !nodemap[connection.source] ){
+        site = new Site(connection, true);
+        nodemap[connection.source] = site;
+    }else{
+        site = nodemap[connection.source];
+        site.update(connection, true);
+    }
+    // check if the target site is existed in the map, if not create one
+    if ( !nodemap[connection.target] ){
+        site = new Site(connection, false);
+        nodemap[connection.target] = site;
+    }else{
+        site = nodemap[connection.target];
+        site.update(connection, false);
+    }
+}
+
+
+/**************************************************
+*   Apply Filter on nodemap
+*/
+function filterNodemapData(siteName){
+    if ( siteName ) {
+        var siteURL = siteName;
+        var result = {};
+        if ( nodemap[siteURL] ){
+            result[siteURL] = nodemap[siteURL];
+            includeLinkedNodes(siteURL, result);
+        }
+        console.log("========== GET AGGREGATE DATA ENDS ==========");
+        // callback( Object.keys(result).length != 0 ? result : {});
+        return Object.keys(result).length != 0 ? result : {};
+    }else{
+        // sort the map by the value of the howMany property
+        var arr = Object.keys(nodemap).map(function(key){
+            return [ nodemap[key].howMany, nodemap[key] ];
+        }).sort(function(a,b){
+            return b[0] - a[0];
+        });
+        // when return, returns the top 50 nodes and their linked nodes
+        var top50 = {};
+        arr.slice(0,50).forEach(function(item){
+            top50[ item[1].name ] = item[1];
+        });
+        for ( var i in top50 ){
+            includeLinkedNodes(top50[i].name, top50);
+        }
+    
+        console.log("========== GET AGGREGATE DATA(TOP 50) ENDS ==========");
+        // callback( Object.keys(top50).length != 0 ? top50 : {});
+        return Object.keys(top50).length != 0 ? top50 : {};
+    }
+}
+
+
+/**************************************************
+*   Helper for function filterNodemapData
+*   (include linked nodes to the result)
+*/
+function includeLinkedNodes(nodeName, result){
+    var linkedNodes = nodemap[nodeName].linkedFrom.concat(nodemap[nodeName].linkedTo);
+    linkedNodes.forEach(function(linkedNodeName){
+        // include the node when it hasn't been added to the result map
+        if ( !result[linkedNodeName] ){ 
+            var clone = {};
+            for ( var p in nodemap[linkedNodeName] ){
+                if ( !(p == "linkedFrom" || p == "linkedTo") ){
+                    clone[p] = nodemap[linkedNodeName][p];
+                }
+            }
+            result[linkedNodeName] = clone;
+        }
+    });
+}
+
