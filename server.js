@@ -398,7 +398,7 @@ function dbDatabaseSiteListQuery(callback){
     var sitesQuery = 
         "SELECT source AS site, count(DISTINCT target) AS numConnectedSites, count(id) as numConnections " + 
         "FROM Connection " +
-        "WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW() "
+        "WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW() " +
         "GROUP BY source " +
         "UNION ALL " +
         "SELECT target AS site, count(DISTINCT source) AS numConnectedSites, count(id) as numConnections " + 
