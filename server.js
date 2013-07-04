@@ -240,7 +240,7 @@ var dbDashboardQuery = function(callback){
 
 var dashboardCallback = function(data){
     while ( dashboardQueue.length > 0 ){
-        dashboardQueue.shift().jsonp( data );
+        dashboardQueue.shift().jsonp( JSON.parse(data) );
     }
 }
 
@@ -264,7 +264,7 @@ app.get("/dashboardData", function(req,res){
     });
 });  
 
-// setInterval(runDashboardQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
+setInterval(runDashboardQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
 
 
 /**************************************************
@@ -388,17 +388,40 @@ var databaseSiteListQueue = [];
 
 function dbDatabaseSiteListQuery(callback){
     var queryArray = [];
-    var top10Query = "SELECT target AS site, count(DISTINCT source) AS numSources, count(id) as numConnections FROM Connection " + 
-                        "WHERE sourceVisited = false AND cookie = true GROUP BY target ORDER BY numSources DESC LIMIT 10";
+
+    // for performance issue, for now set the time range to be the last 24 hours
+    var top10Query =    "SELECT target AS site, count(DISTINCT source) AS numSources, count(id) as numConnections "+
+                        "FROM Connection " + 
+                        "WHERE sourceVisited = false AND cookie = true AND timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW() "+
+                        "GROUP BY target " + 
+                        "ORDER BY numSources DESC LIMIT 10";
     var sitesQuery = 
         "SELECT source AS site, count(DISTINCT target) AS numConnectedSites, count(id) as numConnections " + 
         "FROM Connection " +
+        "WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW() "
         "GROUP BY source " +
         "UNION ALL " +
         "SELECT target AS site, count(DISTINCT source) AS numConnectedSites, count(id) as numConnections " + 
         "FROM Connection " +
+        "WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW() " +
         "GROUP BY target " +
         "ORDER BY numConnectedSites DESC LIMIT 20";
+    
+    // based on *all time* data
+    // var top10Query =    "SELECT target AS site, count(DISTINCT source) AS numSources, count(id) as numConnections "+
+    //                     "FROM Connection " + 
+    //                     "WHERE sourceVisited = false AND cookie = true "+
+    //                     "GROUP BY target " + 
+    //                     "ORDER BY numSources DESC LIMIT 10";
+    // var sitesQuery = 
+    //     "SELECT source AS site, count(DISTINCT target) AS numConnectedSites, count(id) as numConnections " + 
+    //     "FROM Connection " +
+    //     "GROUP BY source " +
+    //     "UNION ALL " +
+    //     "SELECT target AS site, count(DISTINCT source) AS numConnectedSites, count(id) as numConnections " + 
+    //     "FROM Connection " +
+    //     "GROUP BY target " +
+    //     "ORDER BY numConnectedSites DESC LIMIT 20";
 
     queryArray.push(sitesQuery);
     queryArray.push(top10Query);
@@ -417,7 +440,7 @@ function dbDatabaseSiteListQuery(callback){
 
 var databaseSiteListCallback = function(data){
     while ( databaseSiteListQueue.length > 0 ){
-        databaseSiteListQueue.shift().jsonp( data );
+        databaseSiteListQueue.shift().jsonp( JSON.parse(data) );
     }
 }
 
@@ -441,7 +464,7 @@ app.get("/databaseSiteList", function(req,res){
     });
 });
 
-// setInterval(runDatabaseSiteListQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
+setInterval(runDatabaseSiteListQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
 
 /**************************************************
 *   Get getSiteProfileNew query result
@@ -460,7 +483,7 @@ function dbSiteProfileNewQuery(req,callback){
 
 var siteProfileNewCallback = function(data){
     while ( siteProfileNewQueue.length > 0 ){
-        siteProfileNewQueue.shift().jsonp( data );
+        siteProfileNewQueue.shift().jsonp( JSON.parse(data) );
     }
 }
 
@@ -487,7 +510,7 @@ app.get("/getSiteProfileNew", function(req,res){
     });
 });
 
-// setInterval(runSiteProfileNewQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
+setInterval(runSiteProfileNewQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
 
 
 
