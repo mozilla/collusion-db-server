@@ -138,9 +138,7 @@ exports.getAllTimeAggregate = function(req,pool,callback){
                 }
                 console.log(req.param("name"));
                 var data = filterNodemapData(nodemapAllTime, req.param("name"));
-                console.log(data);
                 nodemapAllTime = {};
-                console.log(data);
                 callback( data );
             });
     });
@@ -208,7 +206,7 @@ function filterNodemapData(theNodemap,siteName){
         var result = {};
         if ( theNodemap[siteURL] ){
             result[siteURL] = theNodemap[siteURL];
-            includeLinkedNodes(theNodemap,siteURL, result);
+            result = includeLinkedNodes(theNodemap,siteURL,result);
         }
         console.log("========== GET AGGREGATE DATA ENDS ==========");
         // callback( Object.keys(result).length != 0 ? result : {});
@@ -226,7 +224,7 @@ function filterNodemapData(theNodemap,siteName){
             top50[ item[1].name ] = item[1];
         });
         for ( var i in top50 ){
-            includeLinkedNodes(theNodemap,top50[i].name, top50);
+            top50 = includeLinkedNodes(theNodemap,top50[i].name, top50);
         }
     
         console.log("========== GET AGGREGATE DATA(TOP 50) ENDS ==========");
@@ -240,7 +238,7 @@ function filterNodemapData(theNodemap,siteName){
 *   Helper for function filterNodemapData
 *   (include linked nodes to the result)
 */
-function includeLinkedNodes(theNodemap,nodeName, result){
+function includeLinkedNodes(theNodemap,nodeName,result){
     var linkedNodes = theNodemap[nodeName].linkedFrom.concat(theNodemap[nodeName].linkedTo);
     linkedNodes.forEach(function(linkedNodeName){
         // include the node when it hasn't been added to the result map
@@ -254,5 +252,6 @@ function includeLinkedNodes(theNodemap,nodeName, result){
             result[linkedNodeName] = clone;
         }
     });
+    return result;
 }
 

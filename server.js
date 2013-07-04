@@ -240,7 +240,7 @@ var dbDashboardQuery = function(callback){
 
 var dashboardCallback = function(data){
     while ( dashboardQueue.length > 0 ){
-        dashboardQueue.shift().jsonp(data);
+        dashboardQueue.shift().jsonp( JSON.parse(data) );
     }
 }
 
@@ -417,7 +417,7 @@ function dbDatabaseSiteListQuery(callback){
 
 var databaseSiteListCallback = function(data){
     while ( databaseSiteListQueue.length > 0 ){
-        databaseSiteListQueue.shift().jsonp(data);
+        databaseSiteListQueue.shift().jsonp( JSON.parse(data) );
     }
 }
 
@@ -446,6 +446,32 @@ setInterval(runDatabaseSiteListQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 
 /**************************************************
 *   Get getSiteProfileNew query result
 */
+
+var siteProfileNewQueryRunning = false;
+var siteProfileNewQueue = [];
+
+function dbSiteProfileNewQuery(req,callback){
+    pool.getConnection( function(err,dbConnection){
+        aggregate.getAllTimeAggregate(req,pool,function(result){
+            callback(result);
+        });
+    });
+}
+
+var siteProfileNewCallback = function(data){
+    while ( siteProfileNewQueue.length > 0 ){
+        siteProfileNewQueue.shift().jsonp( JSON.parse(data) );
+    }
+}
+
+var runSiteProfileNewQuery = function(req,site){
+    dbSiteProfileNewQuery(req,function(data){
+        siteProfileNewQueryRunning = false;
+        addDataToMemcached(CACHE_PROFILE_KEY+site, data, siteProfileNewCallback);
+    });
+}
+
+
 app.get("/getSiteProfileNew", function(req,res){
     console.log("=== getSiteProfile === " + req.param("name"));
     var site = req.param("name");
@@ -453,16 +479,14 @@ app.get("/getSiteProfileNew", function(req,res){
         if ( value ){
             res.jsonp(JSON.parse(value));
         }else{
-            pool.getConnection( function(err,dbConnection){
-                aggregate.getAllTimeAggregate(req,pool,function(result){
-                    addDataToMemcached(CACHE_PROFILE_KEY+site, result, function(){
-                        res.jsonp(result);
-                    });
-                });
-            });
+            siteProfileNewQueue.push(res);
+            if ( !siteProfileNewQueryRunning ){
+                runSiteProfileNewQuery(req,site);
+            }
         }
     });
 });
+
 
 app.listen(process.env.PORT, function() {
     console.log("Listening on " + process.env.PORT);
