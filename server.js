@@ -240,7 +240,7 @@ var dbDashboardQuery = function(callback){
 
 var dashboardCallback = function(data){
     while ( dashboardQueue.length > 0 ){
-        dashboardQueue.shift().jsonp( JSON.parse(data) );
+        dashboardQueue.shift().jsonp( data );
     }
 }
 
@@ -264,7 +264,7 @@ app.get("/dashboardData", function(req,res){
     });
 });  
 
-setInterval(runDashboardQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
+// setInterval(runDashboardQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
 
 
 /**************************************************
@@ -417,7 +417,7 @@ function dbDatabaseSiteListQuery(callback){
 
 var databaseSiteListCallback = function(data){
     while ( databaseSiteListQueue.length > 0 ){
-        databaseSiteListQueue.shift().jsonp( JSON.parse(data) );
+        databaseSiteListQueue.shift().jsonp( data );
     }
 }
 
@@ -441,7 +441,7 @@ app.get("/databaseSiteList", function(req,res){
     });
 });
 
-setInterval(runDatabaseSiteListQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
+// setInterval(runDatabaseSiteListQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
 
 /**************************************************
 *   Get getSiteProfileNew query result
@@ -460,7 +460,7 @@ function dbSiteProfileNewQuery(req,callback){
 
 var siteProfileNewCallback = function(data){
     while ( siteProfileNewQueue.length > 0 ){
-        siteProfileNewQueue.shift().jsonp( JSON.parse(data) );
+        siteProfileNewQueue.shift().jsonp( data );
     }
 }
 
@@ -486,6 +486,9 @@ app.get("/getSiteProfileNew", function(req,res){
         }
     });
 });
+
+// setInterval(runSiteProfileNewQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
+
 
 
 app.listen(process.env.PORT, function() {
