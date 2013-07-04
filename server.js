@@ -60,7 +60,7 @@ app.get("/", function(req, res) {
 /**************************************************
 *   Memcached
 */
-function addDataToMemcached(key, value, callback){
+function addDataToMemcached(key, value, resQueue, callback){
     if ( typeof value === "object" ){
         value = JSON.stringify(value);
     }
@@ -69,11 +69,15 @@ function addDataToMemcached(key, value, callback){
         if ( err ){
             console.log("[ Memcached Set Error ] " + err);
         }
-        callback(value);
+        callback(value,resQueue);
     }, CACHE_EXPIRE_TIME);
 }
 
-
+var memcachedCallback = function(data,resQueue){
+    while ( resQueue.length > 0 ){
+        resQueue.shift().jsonp( JSON.parse(data) );
+    }
+}
 
 
 /**************************************************
@@ -192,7 +196,6 @@ function dbGetRawDataQuery(filterArray,valueArray,callback){
     pool.getConnection( function(err,dbConnection){
         console.log("========== GET RAW DATA STARTS ==========");
         var resObj = {};
-        //avoid SQL Injection attacks by using ? as placeholders for values to be escaped
         var queryConfig = {
             text: "SELECT * FROM Connection WHERE " + filterArray.join(" AND ") + " ORDER BY timestamp DESC " + " LIMIT 1000",
             values: valueArray
@@ -204,7 +207,6 @@ function dbGetRawDataQuery(filterArray,valueArray,callback){
             }
             resObj.rowCount = rows.length;
             resObj.rows = rows;
-            //disconnect dbConnection and send response when all queries are finished
             dbConnection.end(function(err) {
                 if (err) { console.log("[ ERROR ] end connection error: " + err); }
                 console.log("========== GET RAW DATA ENDS ==========");
@@ -254,16 +256,10 @@ var dbDashboardQuery = function(callback){
     });
 }
 
-var dashboardCallback = function(data){
-    while ( dashboardQueue.length > 0 ){
-        dashboardQueue.shift().jsonp( JSON.parse(data) );
-    }
-}
-
-var runDashboardQuery = function(){
+var runDashboardQuery = function(resQueue){
     dbDashboardQuery(function(data){
         dashboardQueryRunning = false;
-        addDataToMemcached("dashboard", data, dashboardCallback);
+        addDataToMemcached("dashboard", data, resQueue, memcachedCallback);
     });
 }
 
@@ -274,7 +270,7 @@ app.get("/dashboardData", function(req,res){
         }else{
             dashboardQueue.push(res);
             if ( !dashboardQueryRunning ){
-                runDashboardQuery();
+                runDashboardQuery(dashboardQueue);
             }
         }
     });
@@ -314,7 +310,6 @@ function postToDB(connections,callback){
         postResponse.timeStart = Date.now();
         for (var i=0; i<connections.length; i++){
             connections[i][TIMESTAMP] = parseInt(connections[i][TIMESTAMP]) / 1000; // converts this UNIX time format from milliseconds to seconds
-            //avoid SQL Injection attacks by using ? as placeholders for values to be escaped
             dbConnection.query("INSERT INTO Connection(source, target, timestamp, contentType, cookie, sourceVisited, secure, sourcePathDepth, sourceQueryDepth, sourceSub, targetSub, method, status, cacheable) VALUES (?, ?, FROM_UNIXTIME(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", connections[i], function(err, results){
                 if (err) {
                     if (err) console.log("[ ERROR ] shareData query execution error: " + err);
@@ -455,16 +450,10 @@ function dbDatabaseSiteListQuery(callback){
     });
 }
 
-var databaseSiteListCallback = function(data){
-    while ( databaseSiteListQueue.length > 0 ){
-        databaseSiteListQueue.shift().jsonp( JSON.parse(data) );
-    }
-}
-
-var runDatabaseSiteListQuery = function(){
+var runDatabaseSiteListQuery = function(resQueue){
     dbDatabaseSiteListQuery(function(data){
         databaseSiteListQueryRunning = false;
-        addDataToMemcached("databaseSiteList", data, databaseSiteListCallback);
+        addDataToMemcached("databaseSiteList", data, resQueue, memcachedCallback);
     });
 }
 
@@ -475,13 +464,14 @@ app.get("/databaseSiteList", function(req,res){
         }else{
             databaseSiteListQueue.push(res);
             if ( !databaseSiteListQueryRunning ){
-                runDatabaseSiteListQuery();
+                runDatabaseSiteListQuery(databaseSiteListQueue);
             }
         }
     });
 });
 
 setInterval(runDatabaseSiteListQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
+
 
 /**************************************************
 *   Get getSiteProfileNew query result
@@ -499,16 +489,10 @@ function dbSiteProfileNewQuery(req,callback){
     });
 }
 
-var siteProfileNewCallback = function(data){
-    while ( siteProfileNewQueue.length > 0 ){
-        siteProfileNewQueue.shift().jsonp( JSON.parse(data) );
-    }
-}
-
-var runSiteProfileNewQuery = function(req,site){
+var runSiteProfileNewQuery = function(req,site,resQueue){
     dbSiteProfileNewQuery(req,function(data){
         siteProfileNewQueryRunning = false;
-        addDataToMemcached(CACHE_PROFILE_KEY+site, data, siteProfileNewCallback);
+        addDataToMemcached(CACHE_PROFILE_KEY+site, data, resQueue, memcachedCallback);
     });
 }
 
@@ -522,13 +506,15 @@ app.get("/getSiteProfileNew", function(req,res){
         }else{
             siteProfileNewQueue.push(res);
             if ( !siteProfileNewQueryRunning ){
-                runSiteProfileNewQuery(req,site);
+                runSiteProfileNewQuery(req,site,siteProfileNewQueue);
             }
         }
     });
 });
 
 setInterval(runSiteProfileNewQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
+
+
 
 
 
