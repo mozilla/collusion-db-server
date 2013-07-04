@@ -74,10 +74,47 @@ function addDataToMemcached(key, value, callback){
 }
 
 
+
+
+/**************************************************
+*   Get data handler
+*/
+app.get("/getData", function(req,res){
+    var paramsLength = req.params.length || Object.keys(req.body).length || Object.keys(req.query).length;
+    // if no params, show messages explaining how the parameters should be used
+    if ( paramsLength == 0 ){
+        res.redirect('/help.html');
+    }else{
+        if ( req.param("aggregateData") == "true" ){
+            aggregate.getAggregate(req,pool,function(result){
+                res.jsonp(result);
+            });
+        }else{
+            getRawData(req,function(result){
+                res.jsonp(result);
+            });
+        }
+    }
+});
+
+
 /**************************************************
 *   Get raw connection data
 */
 function getRawData(req, callback){
+    var queryConfig = rawDataQueryConfig(req);
+    var filterArray = queryConfig.filterArray;
+    var valueArray = queryConfig.valueArray;
+    if ( filterArray.length > 0 && valueArray.length > 0 ){
+        dbGetRawDataQuery(filterArray,valueArray,function(data){
+            callback(data);
+        });
+    }else{
+        callback();
+    }
+}
+
+function rawDataQueryConfig(req){
     var filterArray = new Array();
     var valueArray = new Array();
     if ( req.param("source") ){
@@ -147,56 +184,35 @@ function getRawData(req, callback){
         valueArray.push(req.param("secure") == "true" );  // convert String to Boolean
     }
 
-    if ( filterArray.length > 0 && valueArray.length > 0 ){
-        pool.getConnection( function(err,dbConnection){
-            console.log("========== GET RAW DATA STARTS ==========");
-            var resObj = {};
-            //avoid SQL Injection attacks by using ? as placeholders for values to be escaped
-            var queryConfig = {
-                text: "SELECT * FROM Connection WHERE " + filterArray.join(" AND ") + " ORDER BY timestamp DESC " + " LIMIT 1000",
-                values: valueArray
-            };
-            dbConnection.query(queryConfig.text, queryConfig.values, function(err, rows){
-                if (err) {
-                    resObj.error = "Error encountered: " + err;
-                    console.log("[ ERROR ] getRawData query execution error: " + err);
-                }
-                resObj.rowCount = rows.length;
-                resObj.rows = rows;
-                //disconnect dbConnection and send response when all queries are finished
-                dbConnection.end(function(err) {
-                    if (err) { console.log("[ ERROR ] end connection error: " + err); }
-                    console.log("========== GET RAW DATA ENDS ==========");
-                    callback(resObj);
-                });
-            });
-        });
-    }
+    return { filterArray: filterArray, valueArray: valueArray };
 }
 
 
-
-
-/**************************************************
-*   Get SELECT query result
-*/
-app.get("/getData", function(req,res){
-    var paramsLength = req.params.length || Object.keys(req.body).length || Object.keys(req.query).length;
-    // if no params, show messages explaining how the parameters should be used
-    if ( paramsLength == 0 ){
-        res.redirect('/help.html');
-    }else{
-        if ( req.param("aggregateData") == "true" ){
-            aggregate.getAggregate(req,pool,function(result){
-                res.jsonp(result);
+function dbGetRawDataQuery(filterArray,valueArray,callback){
+    pool.getConnection( function(err,dbConnection){
+        console.log("========== GET RAW DATA STARTS ==========");
+        var resObj = {};
+        //avoid SQL Injection attacks by using ? as placeholders for values to be escaped
+        var queryConfig = {
+            text: "SELECT * FROM Connection WHERE " + filterArray.join(" AND ") + " ORDER BY timestamp DESC " + " LIMIT 1000",
+            values: valueArray
+        };
+        dbConnection.query(queryConfig.text, queryConfig.values, function(err, rows){
+            if (err) {
+                resObj.error = "Error encountered: " + err;
+                console.log("[ ERROR ] getRawData query execution error: " + err);
+            }
+            resObj.rowCount = rows.length;
+            resObj.rows = rows;
+            //disconnect dbConnection and send response when all queries are finished
+            dbConnection.end(function(err) {
+                if (err) { console.log("[ ERROR ] end connection error: " + err); }
+                console.log("========== GET RAW DATA ENDS ==========");
+                callback(resObj);
             });
-        }else{
-            getRawData(req,function(result){
-                res.jsonp(result);
-            });
-        }
-    }
-});
+        });
+    });
+}
 
 
 /**************************************************
@@ -387,6 +403,7 @@ var databaseSiteListQueryRunning = false;
 var databaseSiteListQueue = [];
 
 function dbDatabaseSiteListQuery(callback){
+    databaseSiteListQueryRunning = true;
     var queryArray = [];
 
     // for performance issue, for now set the time range to be the last 24 hours
@@ -474,6 +491,7 @@ var siteProfileNewQueryRunning = false;
 var siteProfileNewQueue = [];
 
 function dbSiteProfileNewQuery(req,callback){
+    siteProfileNewQueryRunning = true;
     pool.getConnection( function(err,dbConnection){
         aggregate.getAllTimeAggregate(req,pool,function(result){
             callback(result);
