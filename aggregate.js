@@ -1,4 +1,5 @@
 const DEFAULT_TIME_SPAN = 7;
+var nodemapAllTime = {};
 var nodemap = {};
 
 function Site(conn, isSource){
@@ -117,6 +118,35 @@ exports.getAggregate = function(req, pool, callback){
 };
 
 
+exports.getAllTimeAggregate = function(req,pool,callback){
+    pool.getConnection(function(err,dbConnection){
+        // get data from database
+        console.log("========== GET A SITE'S ALLTIME AGGREGATE DATA STARTS ==========");
+        dbConnection.query("SELECT * FROM Connection")
+            .on("error", function(err){
+                if (err)  console.log("[ ERROR ] getAggregate query execution error: " + err);
+            })
+            .on("fields", function(fields){})
+            .on("result", function(row){
+                if ( row ){
+                    buildNodemap(nodemapAllTime,row);
+                }
+            })
+            .on("end", function(err){
+                if (err) { 
+                    console.log("[ ERROR ] end connection error" + err); 
+                }
+                console.log(req.param("name"));
+                var data = filterNodemapData(nodemapAllTime, req.param("name"));
+                console.log(data);
+                nodemapAllTime = {};
+                console.log(data);
+                callback( data );
+            });
+    });
+};
+
+
 /**************************************************
 *   Get Aggregated Data from Database
 */
@@ -130,14 +160,15 @@ function dbAggregateDataQuery(siteName,dbConnection,query,callback){
         .on("fields", function(fields){})
         .on("result", function(row){
             if ( row ){
-                buildNodemap(row);
+                buildNodemap(nodemap,row);
             }
         })
         .on("end", function(err){
             if (err) { 
                 console.log("[ ERROR ] end connection error" + err); 
             }
-            var data = filterNodemapData(siteName);
+            var data = filterNodemapData(nodemap,siteName);
+            nodemap = {};
             callback(data);
         });
 }
@@ -146,23 +177,23 @@ function dbAggregateDataQuery(siteName,dbConnection,query,callback){
 /**************************************************
 *   Build nodemap 
 */
-function buildNodemap(connection){
+function buildNodemap(theNodemap,connection){
     var site;
     connection.timestamp = connection.timestamp.valueOf();
     // check if the source site is existed in the map, if not create one
-    if ( !nodemap[connection.source] ){
+    if ( !theNodemap[connection.source] ){
         site = new Site(connection, true);
-        nodemap[connection.source] = site;
+        theNodemap[connection.source] = site;
     }else{
-        site = nodemap[connection.source];
+        site = theNodemap[connection.source];
         site.update(connection, true);
     }
     // check if the target site is existed in the map, if not create one
-    if ( !nodemap[connection.target] ){
+    if ( !theNodemap[connection.target] ){
         site = new Site(connection, false);
-        nodemap[connection.target] = site;
+        theNodemap[connection.target] = site;
     }else{
-        site = nodemap[connection.target];
+        site = theNodemap[connection.target];
         site.update(connection, false);
     }
 }
@@ -171,21 +202,21 @@ function buildNodemap(connection){
 /**************************************************
 *   Apply Filter on nodemap
 */
-function filterNodemapData(siteName){
+function filterNodemapData(theNodemap,siteName){
     if ( siteName ) {
         var siteURL = siteName;
         var result = {};
-        if ( nodemap[siteURL] ){
-            result[siteURL] = nodemap[siteURL];
-            includeLinkedNodes(siteURL, result);
+        if ( theNodemap[siteURL] ){
+            result[siteURL] = theNodemap[siteURL];
+            includeLinkedNodes(theNodemap,siteURL, result);
         }
         console.log("========== GET AGGREGATE DATA ENDS ==========");
         // callback( Object.keys(result).length != 0 ? result : {});
         return Object.keys(result).length != 0 ? result : {};
     }else{
         // sort the map by the value of the howMany property
-        var arr = Object.keys(nodemap).map(function(key){
-            return [ nodemap[key].howMany, nodemap[key] ];
+        var arr = Object.keys(theNodemap).map(function(key){
+            return [ theNodemap[key].howMany, theNodemap[key] ];
         }).sort(function(a,b){
             return b[0] - a[0];
         });
@@ -195,7 +226,7 @@ function filterNodemapData(siteName){
             top50[ item[1].name ] = item[1];
         });
         for ( var i in top50 ){
-            includeLinkedNodes(top50[i].name, top50);
+            includeLinkedNodes(theNodemap,top50[i].name, top50);
         }
     
         console.log("========== GET AGGREGATE DATA(TOP 50) ENDS ==========");
@@ -209,15 +240,15 @@ function filterNodemapData(siteName){
 *   Helper for function filterNodemapData
 *   (include linked nodes to the result)
 */
-function includeLinkedNodes(nodeName, result){
-    var linkedNodes = nodemap[nodeName].linkedFrom.concat(nodemap[nodeName].linkedTo);
+function includeLinkedNodes(theNodemap,nodeName, result){
+    var linkedNodes = theNodemap[nodeName].linkedFrom.concat(theNodemap[nodeName].linkedTo);
     linkedNodes.forEach(function(linkedNodeName){
         // include the node when it hasn't been added to the result map
         if ( !result[linkedNodeName] ){ 
             var clone = {};
-            for ( var p in nodemap[linkedNodeName] ){
+            for ( var p in theNodemap[linkedNodeName] ){
                 if ( !(p == "linkedFrom" || p == "linkedTo") ){
-                    clone[p] = nodemap[linkedNodeName][p];
+                    clone[p] = theNodemap[linkedNodeName][p];
                 }
             }
             result[linkedNodeName] = clone;

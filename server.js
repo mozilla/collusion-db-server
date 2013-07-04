@@ -7,8 +7,8 @@ var app = express();
 var mysql = require("mysql");
 var pool = mysql.createPool(process.env.DATABASE_URL+"?flags=MULTI_STATEMENTS ");
 var aggregate = require("./aggregate.js");
-var memjs = require('memjs')
-var client = memjs.Client.create()
+var memjs = require('memjs');
+var client = memjs.Client.create();
 
 // Constants for indexes of properties in array format
 const SOURCE = 0;
@@ -28,6 +28,7 @@ const CACHEABLE = 13;
 // ===
 const DEFAULT_TIME_SPAN = 7; // in days
 const CACHE_EXPIRE_TIME = 15*60; // 15 minutes in seconds
+const CACHE_PROFILE_KEY = "PROFILE_";
 
 // enable CORS ==========
 app.use(express.methodOverride());
@@ -271,37 +272,6 @@ setInterval(runDashboardQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, i
 */
 
 function shareDataHelper(req,res){
-    function postToDB(connections,callback){
-        var postResponse = {};
-        postResponse.rowAdded = 0;
-        postResponse.rowFailed = 0;
-        pool.getConnection( function(err,dbConnection){
-            console.log("========== SHARE DATA STARTS ==========");
-            postResponse.timeStart = Date.now();
-            for (var i=0; i<connections.length; i++){
-                connections[i][TIMESTAMP] = parseInt(connections[i][TIMESTAMP]) / 1000; // converts this UNIX time format from milliseconds to seconds
-                //avoid SQL Injection attacks by using ? as placeholders for values to be escaped
-                dbConnection.query("INSERT INTO Connection(source, target, timestamp, contentType, cookie, sourceVisited, secure, sourcePathDepth, sourceQueryDepth, sourceSub, targetSub, method, status, cacheable) VALUES (?, ?, FROM_UNIXTIME(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", connections[i], function(err, results){
-                    if (err) {
-                        if (err) console.log("[ ERROR ] shareData query execution error: " + err);
-                        postResponse.error = "Sorry. Error occurred. Please try again.";
-                        postResponse.rowFailed++;
-                    }else{
-                        postResponse.rowAdded++;
-                    }
-                    dbConnection.end(function(err) {
-                        if (err) console.log("[ ERROR ] end connection error: " + err);
-                        if ( (postResponse.rowAdded+postResponse.rowFailed) == connections.length ){ // finished posting the last connection
-                            postResponse.timeEnd = Date.now();
-                            callback(postResponse);
-                        }
-                    });
-                });
-            }
-        });
-    }
-
-
     var jsonObj = req.body;
     if ( jsonObj.format === "Collusion Save File" && jsonObj.version === "1.1" ){ // check format and version
         postToDB(jsonObj.connections,function(result){
@@ -317,6 +287,36 @@ function shareDataHelper(req,res){
     }else{
         res.send("Sorry. Format/version " + jsonObj.format + "/" + jsonObj.version + " not supported.");
     }
+}
+
+function postToDB(connections,callback){
+    var postResponse = {};
+    postResponse.rowAdded = 0;
+    postResponse.rowFailed = 0;
+    pool.getConnection( function(err,dbConnection){
+        console.log("========== SHARE DATA STARTS ==========");
+        postResponse.timeStart = Date.now();
+        for (var i=0; i<connections.length; i++){
+            connections[i][TIMESTAMP] = parseInt(connections[i][TIMESTAMP]) / 1000; // converts this UNIX time format from milliseconds to seconds
+            //avoid SQL Injection attacks by using ? as placeholders for values to be escaped
+            dbConnection.query("INSERT INTO Connection(source, target, timestamp, contentType, cookie, sourceVisited, secure, sourcePathDepth, sourceQueryDepth, sourceSub, targetSub, method, status, cacheable) VALUES (?, ?, FROM_UNIXTIME(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", connections[i], function(err, results){
+                if (err) {
+                    if (err) console.log("[ ERROR ] shareData query execution error: " + err);
+                    postResponse.error = "Sorry. Error occurred. Please try again.";
+                    postResponse.rowFailed++;
+                }else{
+                    postResponse.rowAdded++;
+                }
+                dbConnection.end(function(err) {
+                    if (err) console.log("[ ERROR ] end connection error: " + err);
+                    if ( (postResponse.rowAdded+postResponse.rowFailed) == connections.length ){ // finished posting the last connection
+                        postResponse.timeEnd = Date.now();
+                        callback(postResponse);
+                    }
+                });
+            });
+        }
+    });
 }
 
 
@@ -448,10 +448,19 @@ setInterval(runDatabaseSiteListQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 
 */
 app.get("/getSiteProfileNew", function(req,res){
     console.log("=== getSiteProfile === " + req.param("name"));
-    pool.getConnection( function(err,dbConnection){
-        aggregate.getAggregate(req,pool,function(result){
-            res.jsonp(result);
-        });
+    var site = req.param("name");
+    client.get(CACHE_PROFILE_KEY+site, function(err,value){
+        if ( value ){
+            res.jsonp(JSON.parse(value));
+        }else{
+            pool.getConnection( function(err,dbConnection){
+                aggregate.getAllTimeAggregate(req,pool,function(result){
+                    addDataToMemcached(CACHE_PROFILE_KEY+site, result, function(){
+                        res.jsonp(result);
+                    });
+                });
+            });
+        }
     });
 });
 
