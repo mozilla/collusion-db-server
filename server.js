@@ -89,132 +89,11 @@ app.get("/getData", function(req,res){
     if ( paramsLength == 0 ){
         res.redirect('/help.html');
     }else{
-        if ( req.param("aggregateData") == "true" ){
-            aggregate.getAggregate(req,pool,function(result){
-                res.jsonp(result);
-            });
-        }else{
-            getRawData(req,function(result){
-                res.jsonp(result);
-            });
-        }
+        aggregate.getAggregate(req,pool,function(result){
+            res.jsonp(result);
+        });
     }
 });
-
-
-/**************************************************
-*   Get raw connection data
-*/
-function getRawData(req, callback){
-    var queryConfig = rawDataQueryConfig(req);
-    var filterArray = queryConfig.filterArray;
-    var valueArray = queryConfig.valueArray;
-    if ( filterArray.length > 0 && valueArray.length > 0 ){
-        dbGetRawDataQuery(filterArray,valueArray,function(data){
-            callback(data);
-        });
-    }else{
-        callback();
-    }
-}
-
-function rawDataQueryConfig(req){
-    var filterArray = new Array();
-    var valueArray = new Array();
-    if ( req.param("source") ){
-        if ( req.param("source").charAt(0) == "*" ){
-            filterArray.push("source LIKE ?");
-            valueArray.push("%" + req.param("source").slice(2));
-        }else{
-            filterArray.push("source = ?");
-            valueArray.push(req.param("source"));
-        }
-    }
-
-    if ( req.param("target") ){
-        if ( req.param("target").charAt(0) == "*" ){
-            filterArray.push("target LIKE ?");
-            valueArray.push("%" + req.param("target").slice(2));
-        }else{
-            filterArray.push("target = ?");
-            valueArray.push(req.param("target"));
-        }
-    }
-
-    if ( req.param("date") ){
-        filterArray.push("timestamp BETWEEN TIMESTAMP(?) AND DATE_ADD( TIMESTAMP(?), INTERVAL 1 DAY ) ");
-        valueArray.push(req.param("date"));
-        valueArray.push(req.param("date"));
-    }
-
-    var timeSpan = DEFAULT_TIME_SPAN;
-    if ( req.param("dateSince") ){
-        var timeSpanOutOfRange = ( req.param("timeSpan") < 1 ) || ( req.param("timeSpan") > timeSpan );
-        if ( timeSpanOutOfRange ){
-            callback({error: "timeSpan is in units of days. It has to be a number within 1 to 7(inclusive). A non-integer value will be rounded down to the nearest integer."});
-            return;
-        }
-        if ( req.param("timeSpan") <= timeSpan ){
-            timeSpan = req.param("timeSpan");
-        } // else timeSpan stays as default, 7
-        filterArray.push("timestamp BETWEEN TIMESTAMP(?) AND DATE_ADD( TIMESTAMP(?), INTERVAL ? DAY )");
-        valueArray.push(req.param("dateSince"));
-        valueArray.push(req.param("dateSince"));
-        valueArray.push(timeSpan);
-    }
-
-    if ( req.param("timeSpan") && !req.param("dateSince") ){
-        callback({error: "timeSpan param cannot be used alone. Please specify dateSince."});
-        return;
-    }
-
-    if ( !req.param("date") && !req.param("dateSince") ){
-        filterArray.push("timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW()");
-        valueArray.push("");
-    }
-
-    if ( req.param("cookie") ){
-        filterArray.push("cookie = ?" );
-        valueArray.push(req.param("cookie") == "true"); // convert String to Boolean
-    }
-
-    if ( req.param("sourcevisited") ){
-        filterArray.push("sourcevisited = ?");
-        valueArray.push(req.param("sourcevisited") == "true" );  // convert String to Boolean
-    }
-
-    if ( req.param("secure") ){
-        filterArray.push("secure = ?");
-        valueArray.push(req.param("secure") == "true" );  // convert String to Boolean
-    }
-
-    return { filterArray: filterArray, valueArray: valueArray };
-}
-
-
-function dbGetRawDataQuery(filterArray,valueArray,callback){
-    pool.getConnection( function(err,dbConnection){
-        console.log("========== GET RAW DATA STARTS ==========");
-        var resObj = {};
-        var queryConfig = {
-            text: "SELECT * FROM Connection WHERE " + filterArray.join(" AND ") + " ORDER BY timestamp DESC " + " LIMIT 1000",
-            values: valueArray
-        };
-        dbConnection.query(queryConfig.text, queryConfig.values, function(err, rows){
-            if (err) {
-                resObj.error = "Error encountered: " + err;
-                console.log("[ ERROR ] getRawData query execution error: " + err);
-            }
-            resObj.rowCount = rows.length;
-            resObj.rows = rows;
-            dbConnection.end(function(err) {
-                if (err) { console.log("[ ERROR ] end connection error: " + err); }
-                console.log("========== GET RAW DATA ENDS ==========");
-                callback(resObj);
-            });
-        });
-    });
-}
 
 
 /**************************************************
@@ -370,6 +249,7 @@ function logUpload(token,rowInserted,timeStart,timeEnd){
 *   Get getBrowseData query result
 */
 app.get("/getBrowseData", function(req,res){
+    console.log("hellooooo");
     aggregate.getAggregate(req,pool,function(result){
         res.jsonp(result);
     });
