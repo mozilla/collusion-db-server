@@ -4,6 +4,7 @@ if ( process.env.NEW_RELIC_HOME ) {
 
 var express = require("express");
 var app = express();
+var crypto = require("crypto");
 var mysql = require("mysql");
 var pool = mysql.createPool(process.env.DATABASE_URL+"?flags=MULTI_STATEMENTS ");
 var aggregate = require("./aggregate.js");
@@ -46,6 +47,7 @@ var allowCrossDomain = function(req, res, next) {
     }
 };
 app.use("/shareData",allowCrossDomain);
+app.use("/hashToken",allowCrossDomain);
 
 app.configure(function(){
     app.use(express.static(__dirname + "/public"));
@@ -221,17 +223,51 @@ app.post("/donateData", function(req, res){
 
 
 /**************************************************
+*   Hash Collusion Token and Log it
+*/
+app.post("/hashToken", function(req,res){
+    hashAndLogToken(req.param("token"),function(success){
+        res.send( success ? "Successfully logged the hashed token." : "Error encountered." );
+    });
+});
+
+function hashToken(token){
+    if ( token[0] == "{" && token[token.length-1] == "}" ){ 
+        token = token.substr(1, token.length-2); // strip the curly bracket {}
+    } 
+    return crypto.createHmac("sha1",process.env.HASH_SALT).update(token).digest("hex");
+}
+
+function hashAndLogToken(token,callback){
+    var hashedToken = hashToken(token);
+    pool.getConnection(function(err,dbConnection){
+        var queryConfig = {
+            text : "INSERT INTO HashedToken(token, timestamp) VALUES (?,FROM_UNIXTIME(?))",
+            values : [ hashedToken, Date.now() ]
+        };
+        dbConnection.query(queryConfig.text, queryConfig.values, function(err, result){
+            if (err){ 
+                console.log("[ ERROR ] hashAndLogToken query execution error: " + err);
+            }else{
+                console.log("[ Row Inserted into Table HashedToken ] Row id: " + result.insertId);
+                callback(true);
+            }
+        });
+    });
+}
+
+
+
+/**************************************************
 *   Log posting transaction
 */
-
 function logUpload(token,rowInserted,timeStart,timeEnd){
-    token = token.substr(1, token.length-2); // strip the curly bracket {} that wraps token
     var timestamp = timeStart;
     var processTime = timeEnd - timeStart; // in milliseconds
     pool.getConnection(function(err,dbConnection){
         var queryConfig = {
             text : "INSERT INTO LogUpload(token, rowInserted, timestamp, processTime) VALUES (?,?,FROM_UNIXTIME(?),?)",
-            values : [ token, rowInserted, timestamp, processTime ]
+            values : [ hashToken(token), rowInserted, timestamp, processTime ]
         };
         console.log("Logging upload transaction...");
         dbConnection.query(queryConfig.text, queryConfig.values, function(err, result){
