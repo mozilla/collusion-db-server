@@ -13,6 +13,7 @@ function Site(conn, isSource){
     this.visitedCount = 0;
     this.secureCount = 0;
     this.cookieCount = 0;
+    this.howManyFirstParty = 0;
     this.howMany = 0;
     if (conn){
         this.update(conn, isSource);
@@ -57,6 +58,9 @@ Site.prototype.update = function (conn, isSource){
         this.status.push(conn.status);
     }
     this.howMany++; 
+    if ( conn.source == conn.target ){
+        this.howManyFirstParty++;
+    }
     if ( this.visitedCount/this.howMany == 1 ){
         this.nodeType = 'site';
     }else if ( this.visitedCount/this.howMany == 0 ){
