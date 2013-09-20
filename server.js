@@ -399,7 +399,7 @@ var siteProfileNewQueue = [];
 function dbSiteProfileNewQuery(req,callback){
     siteProfileNewQueryRunning = true;
     pool.getConnection( function(err,dbConnection){
-        aggregate.getAllTimeAggregate(req,pool,function(result){
+        aggregate.getAllTimeSiteAggregate(req,pool,function(result){
             callback(result);
         });
     });
