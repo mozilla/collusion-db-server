@@ -26,6 +26,7 @@ const TARGET_SUB = 10;
 const METHOD = 11;
 const STATUS = 12;
 const CACHEABLE = 13;
+const IS_ROBOT = 14;
 // ===
 const DEFAULT_TIME_SPAN = 7; // in days
 const CACHE_EXPIRE_TIME = 15*60; // 15 minutes in seconds
@@ -167,7 +168,7 @@ setInterval(runDashboardQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, i
 function shareDataHelper(req,res){
     var jsonObj = req.body;
     if ( jsonObj.format === "Collusion Save File" && jsonObj.version === "1.1" ){ // check format and version
-        postToDB(jsonObj.connections,function(result){
+        postToDB(jsonObj.connections,jsonObj.isRobot,function(result){
             console.log("========== SHARE DATA ENDS ==========");
             if ( result.error ){
                 console.log("[ ERROR ] " + result.error);
@@ -182,16 +183,21 @@ function shareDataHelper(req,res){
     }
 }
 
-function postToDB(connections,callback){
-    var postResponse = {};
-    postResponse.rowAdded = 0;
-    postResponse.rowFailed = 0;
+function postToDB(connections,isRobot,callback){
+    var postResponse = {
+        rowAdded : 0,
+        rowFailed: 0
+    };
+    var postConnectionQuery = "INSERT INTO Connection(source, target, timestamp, contentType, cookie, sourceVisited, secure, sourcePathDepth, sourceQueryDepth, sourceSub, targetSub, method, status, cacheable) VALUES (?, ?, FROM_UNIXTIME(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    if (isRobot){ // data from spidering, setting the "isRobot" field to true
+        postConnectionQuery = "INSERT INTO Connection(source, target, timestamp, contentType, cookie, sourceVisited, secure, sourcePathDepth, sourceQueryDepth, sourceSub, targetSub, method, status, cacheable, isRobot) VALUES (?, ?, FROM_UNIXTIME(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, true)";
+    }
     pool.getConnection( function(err,dbConnection){
         console.log("========== SHARE DATA STARTS ==========");
         postResponse.timeStart = Date.now();
         for (var i=0; i<connections.length; i++){
             connections[i][TIMESTAMP] = parseInt(connections[i][TIMESTAMP]) / 1000; // converts this UNIX time format from milliseconds to seconds
-            dbConnection.query("INSERT INTO Connection(source, target, timestamp, contentType, cookie, sourceVisited, secure, sourcePathDepth, sourceQueryDepth, sourceSub, targetSub, method, status, cacheable) VALUES (?, ?, FROM_UNIXTIME(?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", connections[i], function(err, results){
+            dbConnection.query(postConnectionQuery, connections[i], function(err, results){
                 if (err) {
                     if (err) console.log("[ ERROR ] shareData query execution error: " + err);
                     postResponse.error = "Sorry. Error occurred. Please try again.";
@@ -232,6 +238,7 @@ app.post("/hashToken", function(req,res){
 });
 
 function hashToken(token){
+    if ( !token ){ return ""; }
     if ( token[0] == "{" && token[token.length-1] == "}" ){ 
         token = token.substr(1, token.length-2); // strip the curly bracket {}
     } 
