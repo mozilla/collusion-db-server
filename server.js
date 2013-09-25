@@ -340,7 +340,7 @@ function dbDatabaseSiteListQuery(callback){
         "FROM Connection " +
         "WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW() " +
         "GROUP BY target " +
-        "ORDER BY numConnectedSites DESC LIMIT 20";
+        "ORDER BY numConnectedSites DESC";
     
     // based on *all time* data
     // var top10Query =    "SELECT target AS site, count(DISTINCT source) AS numSources, count(id) as numConnections "+
@@ -356,7 +356,7 @@ function dbDatabaseSiteListQuery(callback){
     //     "SELECT target AS site, count(DISTINCT source) AS numConnectedSites, count(id) as numConnections " + 
     //     "FROM Connection " +
     //     "GROUP BY target " +
-    //     "ORDER BY numConnectedSites DESC LIMIT 20";
+    //     "ORDER BY numConnectedSites DESC";
 
     queryArray.push(sitesQuery);
     queryArray.push(top10Query);
