@@ -121,6 +121,7 @@ var dbDashboardQuery = function(callback){
             queryArray.push("SELECT COUNT(*) AS totalConnectionsLast24H FROM Connection WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW()");
             queryArray.push("SELECT target AS site, count(DISTINCT source) AS numSources, count(id) as numConnections FROM Connection WHERE sourceVisited = false AND cookie = true GROUP BY target ORDER BY numSources DESC LIMIT 10");
             dbConnection.query(queryArray.join(";"),function(err, results){
+                dbConnection.release();
                 if (err) {
                     console.log("[ ERROR ] dashboardData query execution error: " + err);
                     dataReturned.error = err;
@@ -198,6 +199,7 @@ function postToDB(connections,isRobot,callback){
         for (var i=0; i<connections.length; i++){
             connections[i][TIMESTAMP] = parseInt(connections[i][TIMESTAMP]) / 1000; // converts this UNIX time format from milliseconds to seconds
             dbConnection.query(postConnectionQuery, connections[i], function(err, results){
+                dbConnection.release();
                 if (err) {
                     if (err) console.log("[ ERROR ] shareData query execution error: " + err);
                     postResponse.error = "Sorry. Error occurred. Please try again.";
@@ -205,13 +207,11 @@ function postToDB(connections,isRobot,callback){
                 }else{
                     postResponse.rowAdded++;
                 }
-                dbConnection.end(function(err) {
-                    if (err) console.log("[ ERROR ] end connection error: " + err);
-                    if ( (postResponse.rowAdded+postResponse.rowFailed) == connections.length ){ // finished posting the last connection
-                        postResponse.timeEnd = Date.now();
-                        callback(postResponse);
-                    }
-                });
+                console.log(postResponse.rowAdded + " === " + postResponse.rowFailed);
+                if ( (postResponse.rowAdded+postResponse.rowFailed) == connections.length ){ // finished posting the last connection
+                    postResponse.timeEnd = Date.now();
+                    callback(postResponse);
+                }
             });
         }
     });
@@ -253,6 +253,7 @@ function hashAndLogToken(token,callback){
             values : [ hashedToken, Date.now() ]
         };
         dbConnection.query(queryConfig.text, queryConfig.values, function(err, result){
+            dbConnection.release();
             if (err){ 
                 console.log("[ ERROR ] hashAndLogToken query execution error: " + err);
             }else{
@@ -278,6 +279,7 @@ function logUpload(token,rowInserted,timeStart,timeEnd){
         };
         console.log("Logging upload transaction...");
         dbConnection.query(queryConfig.text, queryConfig.values, function(err, result){
+            dbConnection.release();
             if (err) console.log("[ ERROR ] logUpload query execution error: " + err);
             else console.log("[ Row Inserted into Table LogUpload ] Row id: " + result.insertId);
         });
@@ -363,9 +365,11 @@ function dbDatabaseSiteListQuery(callback){
 
     pool.getConnection(function(connectionErr,dbConnection){
         if ( connectionErr ){
+            dbConnection.release();
             callback();
         }else{
             dbConnection.query(queryArray.join(";"), function(err, results){
+                dbConnection.release();
                 if (err) console.log("[ ERROR ] databaseSiteList query execution error: " + err);
                 callback(results);
             });
@@ -405,10 +409,8 @@ var siteProfileNewQueue = [];
 
 function dbSiteProfileNewQuery(req,callback){
     siteProfileNewQueryRunning = true;
-    pool.getConnection( function(err,dbConnection){
-        aggregate.getAllTimeSiteAggregate(req,pool,function(result){
-            callback(result);
-        });
+    aggregate.getAllTimeSiteAggregate(req,pool,function(result){
+        callback(result);
     });
 }
 

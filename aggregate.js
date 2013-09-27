@@ -115,7 +115,8 @@ exports.getAggregate = function(req, pool, callback){
         }else{
             query = dbConnection.query("SELECT * FROM Connection WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW() ORDER BY source, target " );
         }
-        dbAggregateDataQuery(req.param("name"),dbConnection,query,function(data){
+        dbAggregateDataQuery(req.param("name"),query,function(data){
+            dbConnection.release();
             callback(data);
         });
     });
@@ -139,6 +140,7 @@ exports.getAllTimeSiteAggregate = function(req,pool,callback){
                 }
             })
             .on("end", function(err){
+                dbConnection.release();
                 if (err) { 
                     console.log("[ ERROR ] end connection error" + err); 
                 }
@@ -154,7 +156,7 @@ exports.getAllTimeSiteAggregate = function(req,pool,callback){
 /**************************************************
 *   Get Aggregated Data from Database
 */
-function dbAggregateDataQuery(siteName,dbConnection,query,callback){
+function dbAggregateDataQuery(siteName,query,callback){
     // get data from database
     console.log("========== GET AGGREGATE DATA STARTS ==========");
     query
