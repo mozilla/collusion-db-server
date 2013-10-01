@@ -207,7 +207,6 @@ function postToDB(connections,isRobot,callback){
                 }else{
                     postResponse.rowAdded++;
                 }
-                console.log(postResponse.rowAdded + " === " + postResponse.rowFailed);
                 if ( (postResponse.rowAdded+postResponse.rowFailed) == connections.length ){ // finished posting the last connection
                     postResponse.timeEnd = Date.now();
                     callback(postResponse);
