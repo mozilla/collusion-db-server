@@ -334,12 +334,12 @@ function dbDatabaseSiteListQuery(callback){
     var sitesQuery = 
         "SELECT source AS site, count(DISTINCT target) AS numConnectedSites, count(id) as numConnections " + 
         "FROM Connection " +
-        "WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW() " +
+        "WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 7 DAY ) AND NOW() " + // past 7 days
         "GROUP BY source " +
         "UNION ALL " +
         "SELECT target AS site, count(DISTINCT source) AS numConnectedSites, count(id) as numConnections " + 
         "FROM Connection " +
-        "WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW() " +
+        "WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 7 DAY ) AND NOW() " + // past 7 days
         "GROUP BY target " +
         "ORDER BY numConnectedSites DESC";
     
