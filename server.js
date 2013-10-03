@@ -328,7 +328,7 @@ function dbDatabaseSiteListQuery(callback){
     // for performance issue, for now set the time range to be the last 24 hours
     var top10Query =    "SELECT target AS site, count(DISTINCT source) AS numSources, count(id) as numConnections "+
                         "FROM Connection " + 
-                        "WHERE sourceVisited = false AND cookie = true AND timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW() "+
+                        "WHERE sourceVisited = false AND cookie = true AND timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 7 DAY ) AND NOW() "+ // past 7 days
                         "GROUP BY target " + 
                         "ORDER BY numSources DESC LIMIT 10";
     var sitesQuery = 
