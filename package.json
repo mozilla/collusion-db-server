@@ -5,7 +5,7 @@
     "express": "3.x",
     "mysql": "latest",
     "memjs": "latest",
-    "newrelic": "~0.9.21"
+    "newrelic": "0.11.7"
   },
   "engines": {
     "node": "0.10.18",
