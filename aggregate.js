@@ -110,6 +110,7 @@ exports.getAggregate = function(req, pool, callback){
     }
 
     pool.getConnection(function(err,dbConnection){
+        if ( err ) console.log("[Error]" + err);
         if ( valueArray.length > 0 ){
             query = dbConnection.query("SELECT * FROM Connection WHERE " + timeFilter + " ORDER BY source, target ", valueArray );
         }else{
