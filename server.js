@@ -8,8 +8,6 @@ var crypto = require("crypto");
 var mysql = require("mysql");
 var pool = mysql.createPool(process.env.DATABASE_URL+"?flags=MULTI_STATEMENTS ");
 var aggregate = require("./aggregate.js");
-var memjs = require('memjs');
-var client = memjs.Client.create();
 
 // Constants for indexes of properties in array format
 const SOURCE = 0;
@@ -29,8 +27,6 @@ const CACHEABLE = 13;
 const IS_ROBOT = 14;
 // ===
 const DEFAULT_TIME_SPAN = 7; // in days
-const CACHE_EXPIRE_TIME = 15*60; // 15 minutes in seconds
-const CACHE_PROFILE_KEY = "PROFILE_";
 
 // enable CORS ==========
 app.use(express.methodOverride());
@@ -60,27 +56,12 @@ app.get("/", function(req, res) {
 });
 
 
-/**************************************************
-*   Memcached
-*/
-function addDataToMemcached(key, value, resQueue, callback){
-    if ( typeof value === "object" ){
-        value = JSON.stringify(value);
+function dequeueResQueue(data,resQueue){
+    while ( resQueue.length > 0 ){
+        resQueue.shift().jsonp( data );
     }
-    //client.set(key, value, callback, lifetime, flags)
-    client.set(key, value, function(err){
-        if ( err ){
-            console.log("[ Memcached Set Error ] " + err);
-        }
-        callback(value,resQueue);
-    }, CACHE_EXPIRE_TIME);
 }
 
-var memcachedCallback = function(data,resQueue){
-    while ( resQueue.length > 0 ){
-        resQueue.shift().jsonp( JSON.parse(data) );
-    }
-}
 
 
 /**************************************************
@@ -142,24 +123,16 @@ var dbDashboardQuery = function(callback){
 var runDashboardQuery = function(resQueue){
     dbDashboardQuery(function(data){
         dashboardQueryRunning = false;
-        addDataToMemcached("dashboard", data, resQueue, memcachedCallback);
+        dequeueResQueue(data,resQueue);
     });
 }
 
 app.get("/dashboardData", function(req,res){
-    client.get("dashboard", function(err,value){
-        if ( value ){
-            res.jsonp(JSON.parse(value));
-        }else{
-            dashboardQueue.push(res);
-            if ( !dashboardQueryRunning ){
-                runDashboardQuery(dashboardQueue);
-            }
-        }
-    });
-});  
-
-setInterval(runDashboardQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
+    dashboardQueue.push(res);
+    if ( !dashboardQueryRunning ){
+        runDashboardQuery(dashboardQueue);
+    }
+});
 
 
 /**************************************************
@@ -379,24 +352,16 @@ function dbDatabaseSiteListQuery(callback){
 var runDatabaseSiteListQuery = function(resQueue){
     dbDatabaseSiteListQuery(function(data){
         databaseSiteListQueryRunning = false;
-        addDataToMemcached("databaseSiteList", data, resQueue, memcachedCallback);
+        dequeueResQueue(data,resQueue);
     });
 }
 
 app.get("/databaseSiteList", function(req,res){
-    client.get("databaseSiteList", function(err,value){
-        if ( value ){
-            res.jsonp(JSON.parse(value));
-        }else{
-            databaseSiteListQueue.push(res);
-            if ( !databaseSiteListQueryRunning ){
-                runDatabaseSiteListQuery(databaseSiteListQueue);
-            }
-        }
-    });
+    databaseSiteListQueue.push(res);
+    if ( !databaseSiteListQueryRunning ){
+        runDatabaseSiteListQuery(databaseSiteListQueue);
+    }
 });
-
-setInterval(runDatabaseSiteListQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
 
 
 /**************************************************
@@ -416,7 +381,7 @@ function dbSiteProfileNewQuery(req,callback){
 var runSiteProfileNewQuery = function(req,site,resQueue){
     dbSiteProfileNewQuery(req,function(data){
         siteProfileNewQueryRunning = false;
-        addDataToMemcached(CACHE_PROFILE_KEY+site, data, resQueue, memcachedCallback);
+        dequeueResQueue(data,resQueue);
     });
 }
 
@@ -424,19 +389,12 @@ var runSiteProfileNewQuery = function(req,site,resQueue){
 app.get("/getSiteProfileNew", function(req,res){
     console.log("=== getSiteProfile === " + req.param("name"));
     var site = req.param("name");
-    client.get(CACHE_PROFILE_KEY+site, function(err,value){
-        if ( value ){
-            res.jsonp(JSON.parse(value));
-        }else{
-            siteProfileNewQueue.push(res);
-            if ( !siteProfileNewQueryRunning ){
-                runSiteProfileNewQuery(req,site,siteProfileNewQueue);
-            }
-        }
-    });
+    siteProfileNewQueue.push(res);
+    if ( !siteProfileNewQueryRunning ){
+        runSiteProfileNewQuery(req,site,siteProfileNewQueue);
+    }
 });
 
-setInterval(runSiteProfileNewQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
 
 
 
