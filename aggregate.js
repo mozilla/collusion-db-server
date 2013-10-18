@@ -78,6 +78,7 @@ Site.prototype.update = function (conn, isSource){
 *   Get and Return Aggregated Data 
 */
 exports.getAggregate = function(req, pool, callback){
+    console.log('getAggregate');
     var query = "";
     var timeFilter = "";
     var valueArray = new Array();
