@@ -39,7 +39,7 @@ app.use(express.methodOverride());
 // ## CORS middleware
 // based on https://gist.github.com/cuppster/2344435
 var allowCrossDomain = function(req, res, next) {
-    res.header("Access-Control-Allow-Origin", "resource://jid1-F9UJ2thwoAm5gQ-at-jetpack");
+    res.header("Access-Control-Allow-Origin", "resource://jid1-f9uj2thwoam5gq-at-jetpack");
     res.header("Access-Control-Allow-Methods", "POST");
     res.header("Access-Control-Allow-Headers", "Content-Type, Collusion-Share-Data");
     if ("OPTIONS" == req.method) {
