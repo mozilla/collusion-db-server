@@ -8,6 +8,11 @@ var crypto = require("crypto");
 var mysql = require("mysql");
 var pool = mysql.createPool(process.env.DATABASE_URL+"?flags=MULTI_STATEMENTS ");
 var aggregate = require("./aggregate.js");
+
+console.log('starting up');
+console.log('mysql: %s', process.env.DATABASE_URL+"?flags=MULTI_STATEMENTS");
+console.log('pool: ' + pool);
+console.log('environment: %j', process.env);
  
 // Constants for indexes of properties in array format
 const SOURCE = 0;
