@@ -34,7 +34,7 @@ app.use(express.methodOverride());
 // ## CORS middleware
 // based on https://gist.github.com/cuppster/2344435
 var allowCrossDomain = function(req, res, next) {
-    res.header("Access-Control-Allow-Origin", "resource://jid1-7obidhpw1yapaq-at-jetpack");
+    res.header("Access-Control-Allow-Origin", "resource://jid1-F9UJ2thwoAm5gQ-at-jetpack");
     res.header("Access-Control-Allow-Methods", "POST");
     res.header("Access-Control-Allow-Headers", "Content-Type, Collusion-Share-Data");
     if ("OPTIONS" == req.method) {
@@ -44,7 +44,6 @@ var allowCrossDomain = function(req, res, next) {
     }
 };
 app.use("/shareData",allowCrossDomain);
-app.use("/hashToken",allowCrossDomain);
 
 app.configure(function(){
     app.use(express.static(__dirname + "/public"));
@@ -52,6 +51,7 @@ app.configure(function(){
 });
 
 app.get("/", function(req, res) {
+    console.log('/');
     res.send("Hello World!");
 });
 
@@ -68,6 +68,7 @@ function dequeueResQueue(data,resQueue){
 *   Get data handler
 */
 app.get("/getData", function(req,res){
+    console.log('/getData');
     var paramsLength = req.params.length || Object.keys(req.body).length || Object.keys(req.query).length;
     // if no params, show messages explaining how the parameters should be used
     if ( paramsLength == 0 ){
@@ -200,43 +201,6 @@ app.post("/donateData", function(req, res){
 });
 
 
-/**************************************************
-*   Hash Collusion Token and Log it
-*/
-app.post("/hashToken", function(req,res){
-    hashAndLogToken(req.param("token"),function(success){
-        res.send( success ? "Successfully logged the hashed token." : "Error encountered." );
-    });
-});
-
-function hashToken(token){
-    if ( !token ){ return ""; }
-    if ( token[0] == "{" && token[token.length-1] == "}" ){ 
-        token = token.substr(1, token.length-2); // strip the curly bracket {}
-    } 
-    return crypto.createHmac("sha1",process.env.HASH_SALT).update(token).digest("hex");
-}
-
-function hashAndLogToken(token,callback){
-    var hashedToken = hashToken(token);
-    pool.getConnection(function(err,dbConnection){
-        var queryConfig = {
-            text : "INSERT INTO HashedToken(token, timestamp) VALUES (?,FROM_UNIXTIME(?))",
-            values : [ hashedToken, Date.now() ]
-        };
-        dbConnection.query(queryConfig.text, queryConfig.values, function(err, result){
-            dbConnection.release();
-            if (err){ 
-                console.log("[ ERROR ] hashAndLogToken query execution error: " + err);
-            }else{
-                console.log("[ Row Inserted into Table HashedToken ] Row id: " + result.insertId);
-                callback(true);
-            }
-        });
-    });
-}
-
-
 
 /**************************************************
 *   Log posting transaction
@@ -259,14 +223,11 @@ function logUpload(token,rowInserted,timeStart,timeEnd){
 
 }
 
-
-
-
 /**************************************************
 *   Get getBrowseData query result
 */
 app.get("/getBrowseData", function(req,res){
-    console.log("hellooooo");
+    console.log("/getBrowseData");
     aggregate.getAggregate(req,pool,function(result){
         res.jsonp(result);
     });
