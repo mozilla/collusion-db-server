@@ -6,8 +6,12 @@ var express = require("express");
 var app = express();
 var crypto = require("crypto");
 var mysql = require("mysql");
+console.log(process.env.DATABASE_URL);
 var pool = mysql.createPool(process.env.DATABASE_URL+"?flags=MULTI_STATEMENTS ");
+console.log(pool);
 var aggregate = require("./aggregate.js");
+var memjs = require('memjs');
+var client = memjs.Client.create();
 
 console.log('starting up');
 console.log('mysql: %s', process.env.DATABASE_URL+"?flags=MULTI_STATEMENTS");
@@ -32,6 +36,8 @@ const CACHEABLE = 13;
 const IS_ROBOT = 14;
 // ===
 const DEFAULT_TIME_SPAN = 7; // in days
+const CACHE_EXPIRE_TIME = 15*60; // 15 minutes in seconds
+const CACHE_PROFILE_KEY = "PROFILE_";
 
 // enable CORS ==========
 app.use(express.methodOverride());
@@ -61,12 +67,27 @@ app.get("/", function(req, res) {
 });
 
 
-function dequeueResQueue(data,resQueue){
-    while ( resQueue.length > 0 ){
-        resQueue.shift().jsonp( data );
+/**************************************************
+*   Memcached
+*/
+function addDataToMemcached(key, value, resQueue, callback){
+    if ( typeof value === "object" ){
+        value = JSON.stringify(value);
     }
+    //client.set(key, value, callback, lifetime, flags)
+    client.set(key, value, function(err){
+        if ( err ){
+            console.log("[ Memcached Set Error ] " + err);
+        }
+        callback(value,resQueue);
+    }, CACHE_EXPIRE_TIME);
 }
 
+var memcachedCallback = function(data,resQueue){
+    while ( resQueue.length > 0 ){
+        resQueue.shift().jsonp( JSON.parse(data) );
+    }
+}
 
 
 /**************************************************
@@ -129,16 +150,24 @@ var dbDashboardQuery = function(callback){
 var runDashboardQuery = function(resQueue){
     dbDashboardQuery(function(data){
         dashboardQueryRunning = false;
-        dequeueResQueue(data,resQueue);
+        addDataToMemcached("dashboard", data, resQueue, memcachedCallback);
     });
 }
 
 app.get("/dashboardData", function(req,res){
-    dashboardQueue.push(res);
-    if ( !dashboardQueryRunning ){
-        runDashboardQuery(dashboardQueue);
-    }
-});
+    client.get("dashboard", function(err,value){
+        if ( value ){
+            res.jsonp(JSON.parse(value));
+        }else{
+            dashboardQueue.push(res);
+            if ( !dashboardQueryRunning ){
+                runDashboardQuery(dashboardQueue);
+            }
+        }
+    });
+}); 
+
+setInterval(runDashboardQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
 
 
 /**************************************************
@@ -228,30 +257,6 @@ function logUpload(token,rowInserted,timeStart,timeEnd){
 
 }
 
-/**************************************************
-*   Get getBrowseData query result
-*/
-app.get("/getBrowseData", function(req,res){
-    console.log("/getBrowseData");
-    aggregate.getAggregate(req,pool,function(result){
-        res.jsonp(result);
-    });
-});
-
-
-/**************************************************
-*   Get getVisitedWebsite query result
-*/
-app.get("/getSiteProfile", function(req,res){
-    console.log("=== getSiteProfile === " + req.param("name"));
-    aggregate.getAggregate(req,pool,function(result){
-        res.jsonp(result);
-    });
-});
-
-
-// === For the New Website ============================================================================
-
 
 /**************************************************
 *   Get databaseSiteList query result
@@ -318,16 +323,24 @@ function dbDatabaseSiteListQuery(callback){
 var runDatabaseSiteListQuery = function(resQueue){
     dbDatabaseSiteListQuery(function(data){
         databaseSiteListQueryRunning = false;
-        dequeueResQueue(data,resQueue);
+        addDataToMemcached("databaseSiteList", data, resQueue, memcachedCallback);
     });
 }
 
 app.get("/databaseSiteList", function(req,res){
-    databaseSiteListQueue.push(res);
-    if ( !databaseSiteListQueryRunning ){
-        runDatabaseSiteListQuery(databaseSiteListQueue);
-    }
+    client.get("databaseSiteList", function(err,value){
+        if ( value ){
+            res.jsonp(JSON.parse(value));
+        }else{
+            databaseSiteListQueue.push(res);
+            if ( !databaseSiteListQueryRunning ){
+                runDatabaseSiteListQuery(databaseSiteListQueue);
+            }
+        }
+    });
 });
+
+setInterval(runDatabaseSiteListQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
 
 
 /**************************************************
@@ -347,7 +360,7 @@ function dbSiteProfileNewQuery(req,callback){
 var runSiteProfileNewQuery = function(req,site,resQueue){
     dbSiteProfileNewQuery(req,function(data){
         siteProfileNewQueryRunning = false;
-        dequeueResQueue(data,resQueue);
+        addDataToMemcached("CACHE_PROFILE_KEY+site,", data, resQueue, memcachedCallback);
     });
 }
 
@@ -355,13 +368,19 @@ var runSiteProfileNewQuery = function(req,site,resQueue){
 app.get("/getSiteProfileNew", function(req,res){
     console.log("=== getSiteProfile === " + req.param("name"));
     var site = req.param("name");
-    siteProfileNewQueue.push(res);
-    if ( !siteProfileNewQueryRunning ){
-        runSiteProfileNewQuery(req,site,siteProfileNewQueue);
-    }
+    client.get(CACHE_PROFILE_KEY+site, function(err,value){
+        if ( value ){
+            res.jsonp(JSON.parse(value));
+        }else{
+            siteProfileNewQueue.push(res);
+            if ( !siteProfileNewQueryRunning ){
+                runSiteProfileNewQuery(req,site,siteProfileNewQueue);
+            }
+        }
+    });
 });
 
-
+setInterval(runSiteProfileNewQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
 
 
 
