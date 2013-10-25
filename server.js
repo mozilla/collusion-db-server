@@ -183,7 +183,6 @@ function shareDataHelper(req,res){
                 console.log("[ ERROR ] " + result.error);
             }else{
                 console.log("[ Row Inserted into Table Connections ] " + result.rowAdded + " rows.");
-                logUpload(jsonObj.token, result.rowAdded, result.timeStart, result.timeEnd);
             }
         });
         res.send('posting ' + jsonObj.connections.length + ' connections to database');
@@ -233,29 +232,6 @@ app.post("/shareData", function(req, res){
 app.post("/donateData", function(req, res){
     shareDataHelper(req,res);
 });
-
-
-
-/**************************************************
-*   Log posting transaction
-*/
-function logUpload(token,rowInserted,timeStart,timeEnd){
-    var timestamp = timeStart;
-    var processTime = timeEnd - timeStart; // in milliseconds
-    pool.getConnection(function(err,dbConnection){
-        var queryConfig = {
-            text : "INSERT INTO LogUpload(token, rowInserted, timestamp, processTime) VALUES (?,?,FROM_UNIXTIME(?),?)",
-            values : [ hashToken(token), rowInserted, timestamp, processTime ]
-        };
-        console.log("Logging upload transaction...");
-        dbConnection.query(queryConfig.text, queryConfig.values, function(err, result){
-            dbConnection.release();
-            if (err) console.log("[ ERROR ] logUpload query execution error: " + err);
-            else console.log("[ Row Inserted into Table LogUpload ] Row id: " + result.insertId);
-        });
-    });
-
-}
 
 
 /**************************************************
