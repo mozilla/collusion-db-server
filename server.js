@@ -148,7 +148,6 @@ var runDashboardQuery_users = function(resQueue){
     });
 }
 app.get("/dashboardData_users", function(req,res){
-    console.log("dashboardData_users hit");
     client.get("dashboard_users", function(err,value){
         if ( value ){
             res.jsonp(JSON.parse(value));
@@ -181,7 +180,7 @@ var dbDashboardQuery_conns = function(callback){
             callback();
         }else{
             var queryArray = [];
-            queryArray.push("SELECT Max(id) FROM Connection");
+            queryArray.push("SELECT Max(id) As totalConnectionsEver FROM Connection");
             queryArray.push("SELECT COUNT(*) AS totalConnectionsLast24H FROM Connection WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW()");
             dbConnection.query(queryArray.join(";"),function(err, results){
                 dbConnection.release();
@@ -205,7 +204,6 @@ var runDashboardQuery_conns = function(resQueue){
     });
 }
 app.get("/dashboardData_conns", function(req,res){
-    console.log("dashboardData_conns hit");
     client.get("dashboard_conns", function(err,value){
         if ( value ){
             res.jsonp(JSON.parse(value));
