@@ -107,73 +107,16 @@ app.get("/getData", function(req,res){
 
 
 
-/**************************************************
-*   Dashboard Data - Users
-*/
-
-var dashboardQueryRunning_users = false;
-var dashboardQueue_users = [];
-
-var dbDashboardQuery_users = function(callback){
-    dashboardQueryRunning_users = true;
-    var dataReturned = {};
-    pool.getConnection(function(err,dbConnection){
-        if ( err ){
-            callback();
-        }else{
-            var queryArray = [];
-            queryArray.push("SELECT COUNT(DISTINCT token) AS uniqueUsersUpload FROM LogUpload");
-            queryArray.push("SELECT timestamp AS uniqueUsersUploadSince FROM LogUpload WHERE id=1");
-            queryArray.push("SELECT COUNT(DISTINCT token) AS uniqueUsersUploadLast24H FROM LogUpload WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW()");
-            dbConnection.query(queryArray.join(";"),function(err, results){
-                dbConnection.release();
-                if (err) {
-                    console.log("[ ERROR ] dashboardData query execution error: " + err);
-                    dataReturned.error = err;
-                }else{
-                    dataReturned.uniqueUsersUpload = results[0][0].uniqueUsersUpload;
-                    dataReturned.uniqueUsersUploadSince = new Date(results[1][0].uniqueUsersUploadSince).toString().slice(4,15);
-                    dataReturned.uniqueUsersUploadLast24H = results[2][0].uniqueUsersUploadLast24H;
-                }
-                callback(dataReturned);
-            });
-        }
-    });
-}
-
-var runDashboardQuery_users = function(resQueue){
-    dbDashboardQuery_users(function(data){
-        dashboardQueryRunning_users = false;
-        addDataToMemcached("dashboard_users", data, resQueue, memcachedCallback);
-    });
-}
-app.get("/dashboardData_users", function(req,res){
-    client.get("dashboard_users", function(err,value){
-        if ( value ){
-            res.jsonp(JSON.parse(value));
-        }else{
-            dashboardQueue_users.push(res);
-            if ( !dashboardQueryRunning_users ){
-                runDashboardQuery_users(dashboardQueue_users);
-            }
-        }
-    });
-}); 
-
-setInterval(runDashboardQuery_users, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
-
-
-
 
 /**************************************************
-*   Dashboard Data - Connections
+*   Dashboard Data - Total Connections
 */
 
-var dashboardQueryRunning_conns = false;
-var dashboardQueue_conns = [];
+var dashboardQueryRunning_totalConns = false;
+var dashboardQueue_totalConns = [];
 
-var dbDashboardQuery_conns = function(callback){
-    dashboardQueryRunning_conns = true;
+var dbDashboardQuery_totalConns = function(callback){
+    dashboardQueryRunning_totalConns = true;
     var dataReturned = {};
     pool.getConnection(function(err,dbConnection){
         if ( err ){
@@ -181,6 +124,7 @@ var dbDashboardQuery_conns = function(callback){
         }else{
             var queryArray = [];
             queryArray.push("SELECT Max(id) As totalConnectionsEver FROM Connection");
+            queryArray.push("SELECT timestamp AS uniqueUsersUploadSince FROM Connection WHERE id=1");
             queryArray.push("SELECT COUNT(*) AS totalConnectionsLast24H FROM Connection WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW()");
             dbConnection.query(queryArray.join(";"),function(err, results){
                 dbConnection.release();
@@ -189,7 +133,8 @@ var dbDashboardQuery_conns = function(callback){
                     dataReturned.error = err;
                 }else{
                     dataReturned.totalConnectionsEver = results[0][0].totalConnectionsEver;
-                    dataReturned.totalConnectionsLast24H = results[1][0].totalConnectionsLast24H;
+                    dataReturned.uniqueUsersUploadSince = new Date(results[1][0].uniqueUsersUploadSince).toString().slice(4,15);
+                    dataReturned.totalConnectionsLast24H = results[2][0].totalConnectionsLast24H;
                 }
                 callback(dataReturned);
             });
@@ -197,29 +142,78 @@ var dbDashboardQuery_conns = function(callback){
     });
 }
 
-var runDashboardQuery_conns = function(resQueue){
-    dbDashboardQuery_conns(function(data){
-        dashboardQueryRunning_conns = false;
-        addDataToMemcached("dashboard_conns", data, resQueue, memcachedCallback);
+var runDashboardQuery_totalConns = function(resQueue){
+    dbDashboardQuery_totalConns(function(data){
+        dashboardQueryRunning_totalConns = false;
+        addDataToMemcached("dashboard_totalConns", data, resQueue, memcachedCallback);
     });
 }
-app.get("/dashboardData_conns", function(req,res){
-    client.get("dashboard_conns", function(err,value){
+app.get("/dashboardData_totalConns", function(req,res){
+    client.get("dashboard_totalConns", function(err,value){
         if ( value ){
             res.jsonp(JSON.parse(value));
         }else{
-            dashboardQueue_conns.push(res);
-            if ( !dashboardQueryRunning_conns ){
-                runDashboardQuery_conns(dashboardQueue_conns);
+            dashboardQueue_totalConns.push(res);
+            if ( !dashboardQueryRunning_totalConns ){
+                runDashboardQuery_totalConns(dashboardQueue_totalConns);
             }
         }
     });
 }); 
 
-setInterval(runDashboardQuery_conns, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
+setInterval(runDashboardQuery_totalConns, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
 
 
+/**************************************************
+*   Dashboard Data - Last 24 Hours Connections
+*/
 
+var dashboardQueryRunning_last24conns = false;
+var dashboardQueue_last24conns = [];
+
+var dbDashboardQuery_last24conns = function(callback){
+    dashboardQueryRunning_last24conns = true;
+    var dataReturned = {};
+    pool.getConnection(function(err,dbConnection){
+        if ( err ){
+            callback();
+        }else{
+            var queryArray = [];
+            queryArray.push("SELECT COUNT(*) AS totalConnectionsLast24H FROM Connection WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW()");
+            dbConnection.query(queryArray.join(";"),function(err, results){
+                dbConnection.release();
+                if (err) {
+                    console.log("[ ERROR ] dashboardData query execution error: " + err);
+                    dataReturned.error = err;
+                }else{
+                    dataReturned.totalConnectionsLast24H = results[0].totalConnectionsLast24H;
+                }
+                callback(dataReturned);
+            });
+        }
+    });
+}
+
+var runDashboardQuery_last24conns = function(resQueue){
+    dbDashboardQuery_last24conns(function(data){
+        dashboardQueryRunning_last24conns = false;
+        addDataToMemcached("dashboard_last24conns", data, resQueue, memcachedCallback);
+    });
+}
+app.get("/dashboardData_last24conns", function(req,res){
+    client.get("dashboard_last24conns", function(err,value){
+        if ( value ){
+            res.jsonp(JSON.parse(value));
+        }else{
+            dashboardQueue_last24conns.push(res);
+            if ( !dashboardQueryRunning_last24conns ){
+                runDashboardQuery_last24conns(dashboardQueue_last24conns);
+            }
+        }
+    });
+}); 
+
+setInterval(runDashboardQuery_last24conns, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
 
 
 
