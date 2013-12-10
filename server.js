@@ -181,7 +181,7 @@ var dbDashboardQuery_conns = function(callback){
             callback();
         }else{
             var queryArray = [];
-            queryArray.push("SELECT COUNT(*) AS totalConnectionsEver FROM Connection");
+            queryArray.push("SELECT Max(id) FROM Connection");
             queryArray.push("SELECT COUNT(*) AS totalConnectionsLast24H FROM Connection WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 DAY ) AND NOW()");
             dbConnection.query(queryArray.join(";"),function(err, results){
                 dbConnection.release();
