@@ -129,9 +129,10 @@ exports.getAllTimeSiteAggregate = function(req,pool,callback){
     pool.getConnection(function(err,dbConnection){
         // get data from database
         console.log("========== GET A SITE'S ALLTIME AGGREGATE DATA STARTS ==========");
-        // for performance issue, for now set the time range to be the last 7 days
-        dbConnection.query("SELECT * FROM Connection WHERE (source = ? OR target = ?) AND timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 7 DAY ) AND NOW() ", [ req.param("name"),req.param("name") ])
-        // dbConnection.query("SELECT * FROM Connection")
+        dbConnection
+            .query( "SELECT * FROM Connection " +
+                            "WHERE (source = ? OR target = ?) AND timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 HOUR ) AND NOW() "
+                            , [ req.param("name"),req.param("name") ])
             .on("error", function(err){
                 if (err)  console.log("[ ERROR ] getAggregate query execution error: " + err);
             })

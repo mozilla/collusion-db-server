@@ -233,10 +233,11 @@ var dbDashboardQuery_top10 = function(callback){
             callback();
         }else{
             var queryArray = [];
-            queryArray.push("SELECT target AS site, count(DISTINCT source) AS numSources, count(id) as numConnections " +
+            queryArray.push("SELECT target AS site, count(DISTINCT source) AS numSources, count(id) as numConnections "+
                             "FROM Connection " + 
-                            "WHERE sourceVisited = false AND cookie = true " + 
-                            "GROUP BY target ORDER BY numSources DESC LIMIT 10");
+                            "WHERE sourceVisited = false AND cookie = true AND timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 HOUR ) AND NOW() " +
+                            "GROUP BY target " + 
+                            "ORDER BY numSources DESC LIMIT 10");
             dbConnection.query(queryArray.join(";"),function(err, results){
                 dbConnection.release();
                 if (err) {
@@ -352,51 +353,24 @@ var databaseSiteListQueue = [];
 
 function dbDatabaseSiteListQuery(callback){
     databaseSiteListQueryRunning = true;
-    var queryArray = [];
-
-    // for performance issue, for now set the time range to be the last 24 hours
-    var top10Query =    "SELECT target AS site, count(DISTINCT source) AS numSources, count(id) as numConnections "+
-                        "FROM Connection " + 
-                        "WHERE sourceVisited = false AND cookie = true AND timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 7 DAY ) AND NOW() "+ // past 7 days
-                        "GROUP BY target " + 
-                        "ORDER BY numSources DESC LIMIT 10";
     var sitesQuery = 
         "SELECT source AS site, count(DISTINCT target) AS numConnectedSites, count(id) as numConnections " + 
         "FROM Connection " +
-        "WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 7 DAY ) AND NOW() " + // past 7 days
+        "WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 HOUR ) AND NOW() " +
         "GROUP BY source " +
         "UNION ALL " +
         "SELECT target AS site, count(DISTINCT source) AS numConnectedSites, count(id) as numConnections " + 
         "FROM Connection " +
-        "WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 7 DAY ) AND NOW() " + // past 7 days
+        "WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 HOUR ) AND NOW() " +
         "GROUP BY target " +
         "ORDER BY numConnectedSites DESC";
-    
-    // based on *all time* data
-    // var top10Query =    "SELECT target AS site, count(DISTINCT source) AS numSources, count(id) as numConnections "+
-    //                     "FROM Connection " + 
-    //                     "WHERE sourceVisited = false AND cookie = true "+
-    //                     "GROUP BY target " + 
-    //                     "ORDER BY numSources DESC LIMIT 10";
-    // var sitesQuery = 
-    //     "SELECT source AS site, count(DISTINCT target) AS numConnectedSites, count(id) as numConnections " + 
-    //     "FROM Connection " +
-    //     "GROUP BY source " +
-    //     "UNION ALL " +
-    //     "SELECT target AS site, count(DISTINCT source) AS numConnectedSites, count(id) as numConnections " + 
-    //     "FROM Connection " +
-    //     "GROUP BY target " +
-    //     "ORDER BY numConnectedSites DESC";
-
-    queryArray.push(sitesQuery);
-    queryArray.push(top10Query);
 
     pool.getConnection(function(connectionErr,dbConnection){
         if ( connectionErr ){
             dbConnection.release();
             callback();
         }else{
-            dbConnection.query(queryArray.join(";"), function(err, results){
+            dbConnection.query(sitesQuery, function(err, results){
                 dbConnection.release();
                 if (err) console.log("[ ERROR ] databaseSiteList query execution error: " + err);
                 callback(results);
