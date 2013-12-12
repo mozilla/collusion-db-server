@@ -353,17 +353,14 @@ var databaseSiteListQueue = [];
 
 function dbDatabaseSiteListQuery(callback){
     databaseSiteListQueryRunning = true;
-    var sitesQuery = 
-        "SELECT source AS site, count(DISTINCT target) AS numConnectedSites, count(id) as numConnections " + 
-        "FROM Connection " +
-        "WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL " + process.env.DATA_TIME_RANGE + " HOUR ) AND NOW() " +
-        "GROUP BY source " +
-        "UNION ALL " +
-        "SELECT target AS site, count(DISTINCT source) AS numConnectedSites, count(id) as numConnections " + 
-        "FROM Connection " +
-        "WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL " + process.env.DATA_TIME_RANGE + " HOUR ) AND NOW() " +
-        "GROUP BY target " +
-        "ORDER BY numConnectedSites DESC";
+
+    // return third party sites, sorted by num of distinct sites they have connected to
+    var sitesQuery =
+        "SELECT target AS site, count(DISTINCT source) AS numSources, count(id) as numConnections "+
+        "FROM Connection " + 
+        "WHERE sourceVisited = false AND cookie = true AND timestamp BETWEEN DATE_SUB( NOW(), INTERVAL " + process.env.DATA_TIME_RANGE + " HOUR ) AND NOW() " +
+        "GROUP BY target " + 
+        "ORDER BY numSources DESC";
 
     pool.getConnection(function(connectionErr,dbConnection){
         if ( connectionErr ){
