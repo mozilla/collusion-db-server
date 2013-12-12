@@ -235,7 +235,7 @@ var dbDashboardQuery_top10 = function(callback){
             var queryArray = [];
             queryArray.push("SELECT target AS site, count(DISTINCT source) AS numSources, count(id) as numConnections "+
                             "FROM Connection " + 
-                            "WHERE sourceVisited = false AND cookie = true AND timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 HOUR ) AND NOW() " +
+                            "WHERE sourceVisited = false AND cookie = true AND timestamp BETWEEN DATE_SUB( NOW(), INTERVAL " + process.env.DATA_TIME_RANGE + " HOUR ) AND NOW() " +
                             "GROUP BY target " + 
                             "ORDER BY numSources DESC LIMIT 10");
             dbConnection.query(queryArray.join(";"),function(err, results){
@@ -356,12 +356,12 @@ function dbDatabaseSiteListQuery(callback){
     var sitesQuery = 
         "SELECT source AS site, count(DISTINCT target) AS numConnectedSites, count(id) as numConnections " + 
         "FROM Connection " +
-        "WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 HOUR ) AND NOW() " +
+        "WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL " + process.env.DATA_TIME_RANGE + " HOUR ) AND NOW() " +
         "GROUP BY source " +
         "UNION ALL " +
         "SELECT target AS site, count(DISTINCT source) AS numConnectedSites, count(id) as numConnections " + 
         "FROM Connection " +
-        "WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 HOUR ) AND NOW() " +
+        "WHERE timestamp BETWEEN DATE_SUB( NOW(), INTERVAL " + process.env.DATA_TIME_RANGE + " HOUR ) AND NOW() " +
         "GROUP BY target " +
         "ORDER BY numConnectedSites DESC";
 

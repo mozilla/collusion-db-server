@@ -131,7 +131,7 @@ exports.getAllTimeSiteAggregate = function(req,pool,callback){
         console.log("========== GET A SITE'S ALLTIME AGGREGATE DATA STARTS ==========");
         dbConnection
             .query( "SELECT * FROM Connection " +
-                            "WHERE (source = ? OR target = ?) AND timestamp BETWEEN DATE_SUB( NOW(), INTERVAL 1 HOUR ) AND NOW() "
+                            "WHERE (source = ? OR target = ?) AND timestamp BETWEEN DATE_SUB( NOW(), INTERVAL " + process.env.DATA_TIME_RANGE + " HOUR ) AND NOW() "
                             , [ req.param("name"),req.param("name") ])
             .on("error", function(err){
                 if (err)  console.log("[ ERROR ] getAggregate query execution error: " + err);
