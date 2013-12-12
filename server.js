@@ -10,8 +10,8 @@ console.log(process.env.DATABASE_URL);
 var pool = mysql.createPool(process.env.DATABASE_URL+"?flags=MULTI_STATEMENTS ");
 console.log(pool);
 var aggregate = require("./aggregate.js");
-// var memjs = require('memjs');
-// var client = memjs.Client.create();
+var memjs = require('memjs');
+var client = memjs.Client.create();
 
 console.log('starting up');
 console.log('mysql: %s', process.env.DATABASE_URL+"?flags=MULTI_STATEMENTS");
@@ -66,6 +66,22 @@ app.get("/", function(req, res) {
     res.send("Hello World!");
 });
 
+app.get("/pleaseprintallenvvars",function(req,res){
+    var html = "";
+    for ( thisVar in process.env ){
+        html += thisVar;
+        html += " = ";
+        if ( thisVar == "DATABASE_URL" ){
+            html += process.env[thisVar].substr(0,22);   
+        }else{
+            html += process.env[thisVar];
+        }
+        html += "<br/>";
+    }
+    // res.send(200, "[ printing out process.env ] " + JSON.stringify(process.env));
+    res.send(200, "[ printing out process.env ] <br/><br/>" + html);
+});
+
 
 /**************************************************
 *   Memcached
@@ -74,13 +90,13 @@ function addDataToMemcached(key, value, resQueue, callback){
     if ( typeof value === "object" ){
         value = JSON.stringify(value);
     }
-    // //client.set(key, value, callback, lifetime, flags)
-    // client.set(key, value, function(err){
-    //     if ( err ){
-    //         console.log("[ Memcached Set Error ] " + err);
-    //     }
+    //client.set(key, value, callback, lifetime, flags)
+    client.set(key, value, function(err){
+        if ( err ){
+            console.log("[ Memcached Set Error ] " + err);
+        }
         callback(value,resQueue);
-    // }, CACHE_EXPIRE_TIME);
+    }, CACHE_EXPIRE_TIME);
 }
 
 var memcachedCallback = function(data,resQueue){
@@ -112,11 +128,11 @@ app.get("/getData", function(req,res){
 *   Dashboard Data - Total Connections
 */
 
-var dashboardQueryRunning_totalConns = false;
-var dashboardQueue_totalConns = [];
+var dashboardQueryRunningTotalConns = false;
+var dashboardQueueTotalConns = [];
 
-var dbDashboardQuery_totalConns = function(callback){
-    dashboardQueryRunning_totalConns = true;
+var dbDashboardQueryTotalConns = function(callback){
+    dashboardQueryRunningTotalConns = true;
     var dataReturned = {};
     pool.getConnection(function(err,dbConnection){
         if ( err ){
@@ -142,37 +158,37 @@ var dbDashboardQuery_totalConns = function(callback){
     });
 }
 
-var runDashboardQuery_totalConns = function(resQueue){
-    dbDashboardQuery_totalConns(function(data){
-        dashboardQueryRunning_totalConns = false;
-        addDataToMemcached("dashboard_totalConns", data, resQueue, memcachedCallback);
+var runDashboardQueryTotalConns = function(resQueue){
+    dbDashboardQueryTotalConns(function(data){
+        dashboardQueryRunningTotalConns = false;
+        addDataToMemcached("dashboardTotalConns", data, resQueue, memcachedCallback);
     });
 }
-app.get("/dashboardData_totalConns", function(req,res){
-    // client.get("dashboard_totalConns", function(err,value){
-    //     if ( value ){
-    //         res.jsonp(JSON.parse(value));
-    //     }else{
-            dashboardQueue_totalConns.push(res);
-            if ( !dashboardQueryRunning_totalConns ){
-                runDashboardQuery_totalConns(dashboardQueue_totalConns);
+app.get("/dashboardDataTotalConns", function(req,res){
+    client.get("dashboardTotalConns", function(err,value){
+        if ( value ){
+            res.jsonp(JSON.parse(value));
+        }else{
+            dashboardQueueTotalConns.push(res);
+            if ( !dashboardQueryRunningTotalConns ){
+                runDashboardQueryTotalConns(dashboardQueueTotalConns);
             }
-    //     }
-    // });
+        }
+    });
 }); 
 
-setInterval(runDashboardQuery_totalConns, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
+setInterval(runDashboardQueryTotalConns, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
 
 
 /**************************************************
 *   Dashboard Data - Last 24 Hours Connections
 */
 
-var dashboardQueryRunning_last24conns = false;
-var dashboardQueue_last24conns = [];
+var dashboardQueryRunningLast24Conns = false;
+var dashboardQueueLast24Conns = [];
 
-var dbDashboardQuery_last24conns = function(callback){
-    dashboardQueryRunning_last24conns = true;
+var dbDashboardQueryLast24Conns = function(callback){
+    dashboardQueryRunningLast24Conns = true;
     var dataReturned = {};
     pool.getConnection(function(err,dbConnection){
         if ( err ){
@@ -194,26 +210,26 @@ var dbDashboardQuery_last24conns = function(callback){
     });
 }
 
-var runDashboardQuery_last24conns = function(resQueue){
-    dbDashboardQuery_last24conns(function(data){
-        dashboardQueryRunning_last24conns = false;
-        addDataToMemcached("dashboard_last24conns", data, resQueue, memcachedCallback);
+var runDashboardQueryLast24Conns = function(resQueue){
+    dbDashboardQueryLast24Conns(function(data){
+        dashboardQueryRunningLast24Conns = false;
+        addDataToMemcached("dashboardLast24Conns", data, resQueue, memcachedCallback);
     });
 }
-app.get("/dashboardData_last24conns", function(req,res){
-    // client.get("dashboard_last24conns", function(err,value){
-    //     if ( value ){
-    //         res.jsonp(JSON.parse(value));
-    //     }else{
-            dashboardQueue_last24conns.push(res);
-            if ( !dashboardQueryRunning_last24conns ){
-                runDashboardQuery_last24conns(dashboardQueue_last24conns);
+app.get("/dashboardDataLast24Conns", function(req,res){
+    client.get("dashboardLast24Conns", function(err,value){
+        if ( value ){
+            res.jsonp(JSON.parse(value));
+        }else{
+            dashboardQueueLast24Conns.push(res);
+            if ( !dashboardQueryRunningLast24Conns ){
+                runDashboardQueryLast24Conns(dashboardQueueLast24Conns);
             }
-    //     }
-    // });
+        }
+    });
 }); 
 
-setInterval(runDashboardQuery_last24conns, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
+setInterval(runDashboardQueryLast24Conns, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
 
 
 
@@ -221,11 +237,11 @@ setInterval(runDashboardQuery_last24conns, CACHE_EXPIRE_TIME*1000); // runs ever
 *   Dashboard Data - Top 10
 */
 
-var dashboardQueryRunning_top10 = false;
-var dashboardQueue_top10 = [];
+var dashboardQueryRunningTop10 = false;
+var dashboardQueueTop10 = [];
 
-var dbDashboardQuery_top10 = function(callback){
-    dashboardQueryRunning_top10 = true;
+var dbDashboardQueryTop10 = function(callback){
+    dashboardQueryRunningTop10 = true;
     var dataReturned = {};
     pool.getConnection(function(err,dbConnection){
         if ( err ){
@@ -252,26 +268,26 @@ var dbDashboardQuery_top10 = function(callback){
     });
 }
 
-var runDashboardQuery_top10 = function(resQueue){
-    dbDashboardQuery_top10(function(data){
-        dashboardQueryRunning_top10 = false;
-        addDataToMemcached("dashboard_top10", data, resQueue, memcachedCallback);
+var runDashboardQueryTop10 = function(resQueue){
+    dbDashboardQueryTop10(function(data){
+        dashboardQueryRunningTop10 = false;
+        addDataToMemcached("dashboardTop10", data, resQueue, memcachedCallback);
     });
 }
-app.get("/dashboardData_top10", function(req,res){
-    // client.get("dashboard_top10", function(err,value){
-    //     if ( value ){
-    //         res.jsonp(JSON.parse(value));
-    //     }else{
-            dashboardQueue_top10.push(res);
-            if ( !dashboardQueryRunning_top10 ){
-                runDashboardQuery_top10(dashboardQueue_top10);
+app.get("/dashboardDataTop10", function(req,res){
+    client.get("dashboardTop10", function(err,value){
+        if ( value ){
+            res.jsonp(JSON.parse(value));
+        }else{
+            dashboardQueueTop10.push(res);
+            if ( !dashboardQueryRunningTop10 ){
+                runDashboardQueryTop10(dashboardQueueTop10);
             }
-    //     }
-    // });
+        }
+    });
 }); 
 
-setInterval(runDashboardQuery_top10, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
+setInterval(runDashboardQueryTop10, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
 
 
 
@@ -384,16 +400,16 @@ var runDatabaseSiteListQuery = function(resQueue){
 }
 
 app.get("/databaseSiteList", function(req,res){
-    // client.get("databaseSiteList", function(err,value){
-    //     if ( value ){
-    //         res.jsonp(JSON.parse(value));
-    //     }else{
+    client.get("databaseSiteList", function(err,value){
+        if ( value ){
+            res.jsonp(JSON.parse(value));
+        }else{
             databaseSiteListQueue.push(res);
             if ( !databaseSiteListQueryRunning ){
                 runDatabaseSiteListQuery(databaseSiteListQueue);
             }
-    //     }
-    // });
+        }
+    });
 });
 
 setInterval(runDatabaseSiteListQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
@@ -424,16 +440,16 @@ var runSiteProfileNewQuery = function(req,site,resQueue){
 app.get("/getSiteProfileNew", function(req,res){
     console.log("=== getSiteProfile === " + req.param("name"));
     var site = req.param("name");
-    // client.get(CACHE_PROFILE_KEY+site, function(err,value){
-    //     if ( value ){
-    //         res.jsonp(JSON.parse(value));
-    //     }else{
+    client.get(CACHE_PROFILE_KEY+site, function(err,value){
+        if ( value ){
+            res.jsonp(JSON.parse(value));
+        }else{
             siteProfileNewQueue.push(res);
             if ( !siteProfileNewQueryRunning ){
                 runSiteProfileNewQuery(req,site,siteProfileNewQueue);
             }
-    //     }
-    // });
+        }
+    });
 });
 
 
