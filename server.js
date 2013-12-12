@@ -10,8 +10,8 @@ console.log(process.env.DATABASE_URL);
 var pool = mysql.createPool(process.env.DATABASE_URL+"?flags=MULTI_STATEMENTS ");
 console.log(pool);
 var aggregate = require("./aggregate.js");
-var memjs = require('memjs');
-var client = memjs.Client.create();
+// var memjs = require('memjs');
+// var client = memjs.Client.create();
 
 console.log('starting up');
 console.log('mysql: %s', process.env.DATABASE_URL+"?flags=MULTI_STATEMENTS");
@@ -74,13 +74,13 @@ function addDataToMemcached(key, value, resQueue, callback){
     if ( typeof value === "object" ){
         value = JSON.stringify(value);
     }
-    //client.set(key, value, callback, lifetime, flags)
-    client.set(key, value, function(err){
-        if ( err ){
-            console.log("[ Memcached Set Error ] " + err);
-        }
+    // //client.set(key, value, callback, lifetime, flags)
+    // client.set(key, value, function(err){
+    //     if ( err ){
+    //         console.log("[ Memcached Set Error ] " + err);
+    //     }
         callback(value,resQueue);
-    }, CACHE_EXPIRE_TIME);
+    // }, CACHE_EXPIRE_TIME);
 }
 
 var memcachedCallback = function(data,resQueue){
@@ -149,16 +149,16 @@ var runDashboardQuery_totalConns = function(resQueue){
     });
 }
 app.get("/dashboardData_totalConns", function(req,res){
-    client.get("dashboard_totalConns", function(err,value){
-        if ( value ){
-            res.jsonp(JSON.parse(value));
-        }else{
+    // client.get("dashboard_totalConns", function(err,value){
+    //     if ( value ){
+    //         res.jsonp(JSON.parse(value));
+    //     }else{
             dashboardQueue_totalConns.push(res);
             if ( !dashboardQueryRunning_totalConns ){
                 runDashboardQuery_totalConns(dashboardQueue_totalConns);
             }
-        }
-    });
+    //     }
+    // });
 }); 
 
 setInterval(runDashboardQuery_totalConns, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
@@ -201,16 +201,16 @@ var runDashboardQuery_last24conns = function(resQueue){
     });
 }
 app.get("/dashboardData_last24conns", function(req,res){
-    client.get("dashboard_last24conns", function(err,value){
-        if ( value ){
-            res.jsonp(JSON.parse(value));
-        }else{
+    // client.get("dashboard_last24conns", function(err,value){
+    //     if ( value ){
+    //         res.jsonp(JSON.parse(value));
+    //     }else{
             dashboardQueue_last24conns.push(res);
             if ( !dashboardQueryRunning_last24conns ){
                 runDashboardQuery_last24conns(dashboardQueue_last24conns);
             }
-        }
-    });
+    //     }
+    // });
 }); 
 
 setInterval(runDashboardQuery_last24conns, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
@@ -259,16 +259,16 @@ var runDashboardQuery_top10 = function(resQueue){
     });
 }
 app.get("/dashboardData_top10", function(req,res){
-    client.get("dashboard_top10", function(err,value){
-        if ( value ){
-            res.jsonp(JSON.parse(value));
-        }else{
+    // client.get("dashboard_top10", function(err,value){
+    //     if ( value ){
+    //         res.jsonp(JSON.parse(value));
+    //     }else{
             dashboardQueue_top10.push(res);
             if ( !dashboardQueryRunning_top10 ){
                 runDashboardQuery_top10(dashboardQueue_top10);
             }
-        }
-    });
+    //     }
+    // });
 }); 
 
 setInterval(runDashboardQuery_top10, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
@@ -384,16 +384,16 @@ var runDatabaseSiteListQuery = function(resQueue){
 }
 
 app.get("/databaseSiteList", function(req,res){
-    client.get("databaseSiteList", function(err,value){
-        if ( value ){
-            res.jsonp(JSON.parse(value));
-        }else{
+    // client.get("databaseSiteList", function(err,value){
+    //     if ( value ){
+    //         res.jsonp(JSON.parse(value));
+    //     }else{
             databaseSiteListQueue.push(res);
             if ( !databaseSiteListQueryRunning ){
                 runDatabaseSiteListQuery(databaseSiteListQueue);
             }
-        }
-    });
+    //     }
+    // });
 });
 
 setInterval(runDatabaseSiteListQuery, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
@@ -416,7 +416,7 @@ function dbSiteProfileNewQuery(req,callback){
 var runSiteProfileNewQuery = function(req,site,resQueue){
     dbSiteProfileNewQuery(req,function(data){
         siteProfileNewQueryRunning = false;
-        addDataToMemcached("CACHE_PROFILE_KEY+site,", data, resQueue, memcachedCallback);
+        addDataToMemcached(CACHE_PROFILE_KEY+site, data, resQueue, memcachedCallback);
     });
 }
 
@@ -424,16 +424,16 @@ var runSiteProfileNewQuery = function(req,site,resQueue){
 app.get("/getSiteProfileNew", function(req,res){
     console.log("=== getSiteProfile === " + req.param("name"));
     var site = req.param("name");
-    client.get(CACHE_PROFILE_KEY+site, function(err,value){
-        if ( value ){
-            res.jsonp(JSON.parse(value));
-        }else{
+    // client.get(CACHE_PROFILE_KEY+site, function(err,value){
+    //     if ( value ){
+    //         res.jsonp(JSON.parse(value));
+    //     }else{
             siteProfileNewQueue.push(res);
             if ( !siteProfileNewQueryRunning ){
                 runSiteProfileNewQuery(req,site,siteProfileNewQueue);
             }
-        }
-    });
+    //     }
+    // });
 });
 
 
