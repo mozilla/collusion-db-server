@@ -100,7 +100,7 @@ function addDataToMemcached(key, value, resQueue, callback){
 }
 
 var memcachedCallback = function(data,resQueue){
-    while ( resQueue.length > 0 ){
+    while ( resQueue && resQueue.length > 0 ){
         resQueue.shift().jsonp( JSON.parse(data) );
     }
 }
@@ -251,7 +251,7 @@ var dbDashboardQueryTop10 = function(callback){
             var queryArray = [];
             queryArray.push("SELECT target AS site, count(DISTINCT source) AS numSources, count(id) as numConnections "+
                             "FROM Connection " + 
-                            "WHERE sourceVisited = false AND cookie = true AND timestamp BETWEEN DATE_SUB( NOW(), INTERVAL " + process.env.DATA_TIME_RANGE + " HOUR ) AND NOW() " +
+                            "WHERE sourceVisited = false AND cookie = true AND timestamp BETWEEN DATE_SUB( NOW(), INTERVAL " + process.env.TOP_CHART_TIME_RANGE + " HOUR ) AND NOW() " +
                             "GROUP BY target " + 
                             "ORDER BY numSources DESC LIMIT 10");
             dbConnection.query(queryArray.join(";"),function(err, results){
