@@ -148,7 +148,9 @@ exports.getAllTimeSiteAggregate = function(req,pool,callback){
                     console.log("[ ERROR ] end connection error" + err); 
                 }
                 console.log(req.param("name"));
-                var data = filterNodemapData(nodemapAllTime, req.param("name"));
+                var data = {};
+                data.siteData = filterNodemapData(nodemapAllTime, req.param("name"));
+                data.timeRange = process.env.SITE_PROFILE_TIME_RANGE;
                 nodemapAllTime = {};
                 callback( data );
             });

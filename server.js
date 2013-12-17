@@ -260,7 +260,8 @@ var dbDashboardQueryTop10 = function(callback){
                     console.log("[ ERROR ] dashboardData query execution error: " + err);
                     dataReturned.error = err;
                 }else{
-                    dataReturned.trackersArray = results;
+                    dataReturned.topTenSites = results;
+                    dataReturned.timeRange = process.env.TOP_CHART_TIME_RANGE;
                 }
                 callback(dataReturned);
             });
@@ -393,8 +394,11 @@ function dbDatabaseSiteListQuery(callback){
 }
 
 var runDatabaseSiteListQuery = function(resQueue){
-    dbDatabaseSiteListQuery(function(data){
+    dbDatabaseSiteListQuery(function(siteData){
         databaseSiteListQueryRunning = false;
+        var data = {};
+        data.siteData = siteData; // array
+        data.timeRange = process.env.DATA_TIME_RANGE;
         addDataToMemcached("databaseSiteList", data, resQueue, memcachedCallback);
     });
 }
