@@ -12,6 +12,7 @@ console.log(pool);
 var aggregate = require("./aggregate.js");
 var memjs = require('memjs');
 var client = memjs.Client.create();
+var pkg = require('./package.json');
 
 console.log('starting up');
 console.log('mysql: %s', process.env.DATABASE_URL+"?flags=MULTI_STATEMENTS");
@@ -62,26 +63,14 @@ app.configure(function(){
 });
 
 app.get("/", function(req, res) {
-    console.log('/');
-    res.send("Hello World!");
+    res.send("Lightbeam for Firefox");
 });
 
-app.get("/pleaseprintallenvvars",function(req,res){
-    var html = "";
-    for ( thisVar in process.env ){
-        html += thisVar;
-        html += " = ";
-        if ( thisVar == "DATABASE_URL" ){
-            html += process.env[thisVar].substr(0,22);   
-        }else{
-            html += process.env[thisVar];
-        }
-        html += "<br/>";
-    }
-    // res.send(200, "[ printing out process.env ] " + JSON.stringify(process.env));
-    res.send(200, "[ printing out process.env ] <br/><br/>" + html);
+app.get("/healthcheck", function(req,res){
+    res.send({
+        version: pkg.version
+    });
 });
-
 
 /**************************************************
 *   Memcached
@@ -120,7 +109,6 @@ app.get("/getData", function(req,res){
         });
     }
 });
-
 
 
 
@@ -289,11 +277,6 @@ app.get("/dashboardDataTop10", function(req,res){
 }); 
 
 setInterval(runDashboardQueryTop10, CACHE_EXPIRE_TIME*1000); // runs every 15 mins, in milliseconds
-
-
-
-
-
 
 
 

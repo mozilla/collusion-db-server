@@ -2,33 +2,53 @@
 <html lang="en">
 <head>
       <meta charset="utf-8" />
-      <title>Collusion Database: No Query Made</title>
-      <link rel="stylesheet" type="text/css" href="style.css" />
+      <title>Lightbeam Database: No Query Made</title>
+      <style>
+            body{
+                  background: rgb(23, 30, 37);
+                  font-family: "Tahoma";
+                  color: #ccc;
+            }
+
+            .params-box{
+                  font-family: "Courier";
+                  display: inline-block;
+                  border: 1px solid #888;
+                  border-radius: 3px;
+                  background: rgba(80,80,80,0.4);
+                  padding: 0 5px;
+                  margin: 3px;
+            }
+
+            #last-updated{
+                  margin-top: 50px;
+                  color: #6FC3E5;
+            }
+      </style>
 </head>
 <body>
-      <h1>Collusion Database: No Query Made</h1>
+      <h1>Lightbeam Database: No Query Made</h1>
       <div>
-             <h1>Oops!</h1>
+             You can query aggregated data from the Lightbeam Database. <br/><br/>
              The currently accepted params are:
              <ul>
-                   <li><b>aggregateData</b>: whether or not you want the returned data to be aggregate (true/false)</li><br/>
-                   <li>When <b>aggregateData</b> is <b>true</b>, the additional params you can pass in are
-                        <br/>Note that data returned is based on connections made in the last 24 hours
-                        <ul><li><b>name</b>: url of the site that you want to search for (eg. www.example.com)</li></ul>
-                   </li><br/>
-                   <li>When <b>aggregateData</b> is <b>false</b>, the additional params you can pass in are
-                        <ul>
-                              <li><b>source</b>: domain of the requested site. (eg. www.example.com, *.example.com)</li>
-                              <li><b>target</b>: domain of the target site.  (eg. www.example.com, *.example.com)</li>
-                              <li><b>date</b>: date that the connection was set (YYYY-MM-DD eg. 2012-12-31)</li>
-                              <li><b>dateSince</b>: (if param dataBefore is not presented), returns every connection that were set between dateSince and now (YYYY-MM-DD eg. 2013-02-11)</li>
-                              <li><b>dateBefore</b>: (if param dataSince is not presented), returns every connection that were set up to and including dateBefore (YYYY-MM-DD eg. 2013-03-01)</li>
-                              <li><b>cookie</b>: whether or not any cookies were set. (true/false)</li>
-                              <li><b>sourcevisited</b>: whether or not the source was loaded by the user in a page or tab.  (true/false)</li>
-                              <li><b>secure</b>: whether or not content loaded via the HTTPS protocol.  (true/false)</li>
-                      </ul>
+                  <li><div class="params-box">name</div>: 
+                        Domain of the requested site. (eg. www.example.com, *.example.com)</li>
+                  </li><br/>
+                  Timestamp related params:
+                  <li><div class="params-box">date</div>: 
+                        Return connection data initiated on the date specified (YYYY-MM-DD eg. 2013-03-26)
                   </li>
-             </ul>
+                  OR
+                  <li><div class="params-box">dateSince</div>: 
+                        Return connection data initiated since the date specified (YYYY-MM-DD eg. 2013-03-26); Pair with <div class="params-box">timeSpan</div> or a default time span 7 days will be used.
+                  </li>
+                  <li><div class="params-box">timeSpan</div>: 
+                        Has to be paired with <div class="params-box">dateSince</div>. In units of days. It has to be a number within 1 to 7(inclusive). A non-integer value will be rounded down to the nearest integer. 
+                  </li>
+          </ul>
        </div>
+
+       <div id="last-updated">This page was last updated on January 2, 2014.</div>
 </body>
 </html>
