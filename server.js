@@ -63,7 +63,9 @@ app.configure(function(){
 });
 
 app.get("/", function(req, res) {
-    res.send("Lightbeam for Firefox");
+    // res.send("Lightbeam for Firefox");
+    // res.render("help");
+    res.redirect('/index.html');
 });
 
 app.get("/healthcheck", function(req,res){
@@ -102,7 +104,7 @@ app.get("/getData", function(req,res){
     var paramsLength = req.params.length || Object.keys(req.body).length || Object.keys(req.query).length;
     // if no params, show messages explaining how the parameters should be used
     if ( paramsLength == 0 ){
-        res.redirect('/help.html');
+        res.redirect('/index.html');
     }else{
         aggregate.getAggregate(req,pool,function(result){
             res.jsonp(result);
