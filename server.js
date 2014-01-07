@@ -63,8 +63,6 @@ app.configure(function(){
 });
 
 app.get("/", function(req, res) {
-    // res.send("Lightbeam for Firefox");
-    // res.render("help");
     res.redirect('/index.html');
 });
 
