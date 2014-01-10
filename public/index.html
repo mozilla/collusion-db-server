@@ -133,43 +133,58 @@
             Aggregated data is built from raw connections data stored in the Lightbeam database.  Each connection object has the following keys: <br/>
             <div class="params-box">source, target, timestamp, contentType, cookie, sourceVisited, secure, sourcePathDepth, sourceQueryDepth, sourceSub, targetSub, method, status, cacheable</div><br/>
             (for detailed explanation, please refer to <a href="//github.com/mozilla/lightbeam/blob/master/doc/data_format.v1.1.md" target="_blank">raw data format</a>)
-            <header class="sub-header">The domain you queried for will have the following keys:</header>
+            <header class="sub-header">The domain you queried for have the following keys:</header>
             <ul>
-              <li><div class="params-box">lastAccess</div>:
-              </li>
-              <li><div class="params-box">firstAccess</div>:
-              </li>
-              <li><div class="params-box">linkedFrom</div>:
-              </li>
-              <li><div class="params-box">linkedTo</div>:
-              </li>
-              <li><div class="params-box">contentTypes</div>:
-              </li>
-              <li><div class="params-box">subdomain</div>:
-              </li>
-              <li><div class="params-box">method</div>:
-              </li>
-              <li><div class="params-box">status</div>:
-              </li>
-              <li><div class="params-box">visitedCount</div>:
-              </li>
-              <li><div class="params-box">secureCount</div>:
-              </li>
-              <li><div class="params-box">cookieCount</div>:
-              </li>
-              <li><div class="params-box">howManyFirstParty</div>:
-              </li>
-              <li><div class="params-box">howMany</div>:
-              </li>
               <li><div class="params-box">name</div>:
+                The domain that you queried
               </li>
               <li><div class="params-box">nodeType</div>:
+                Possible values: site, thirdparty, both; It is determined by (visitedCount/howMany).  If the result is equals to 1, <div class="params-box">nodeType</div> is set to "site".  If the result is equals to 0, <div class="params-box">nodeType</div> is set to "thirdparty".  Any number in between 0 to 1(exclusive) will make <div class="params-box">nodeType</div> "both".
+              </li>
+              <li><div class="params-box">howMany</div>:
+                The number of connections data this aggregated result was built from.
+              </li>
+              <li><div class="params-box">howManyFirstParty</div>:
+                The number of first party connections.
+              </li>
+              <li><div class="params-box">visitedCount</div>:
+                The number of the connections which their sources were loaded by the user in a page or tab.
+              </li>
+              <li><div class="params-box">secureCount</div>:
+                The number of connections the were loaded via HTTPS protocol.
+              </li>
+              <li><div class="params-box">cookieCount</div>:
+                The number of cookie-based connections within <div class="params-box">howMany</div>
+              </li>
+              <li><div class="params-box">firstAccess</div>:
+                Format: integer number of milliseconds since the Unix epoch (January 1, 1970).
+              </li>
+              <li><div class="params-box">lastAccess</div>:
+                Format: integer number of milliseconds since the Unix epoch (January 1, 1970). 
+              </li>
+              <li><div class="params-box">linkedFrom</div>:
+                An array of domains made connections to the site you queried.
+              </li>
+              <li><div class="params-box">linkedTo</div>:
+                An array of domains that were connected by the site you queried.
+              </li>
+              <li><div class="params-box">contentTypes</div>:
+                An array. (text/css, image/png, text/javascript, etc.)
+              </li>
+              <li><div class="params-box">subdomain</div>:
+                An array of subdomains of the site you queried.
+              </li>
+              <li><div class="params-box">method</div>:
+                An array of how the connections used were loaded by. (GET, POST, PUT, etc.)
+              </li>
+              <li><div class="params-box">status</div>:
+                An array of numeric status of the http response.  (200, 404, 500, etc.)
               </li>
             </ul>
 
             <div class="section-divider"></div>
             <div id="footer">
-              <span id="last-updated">This page was last updated on January 6, 2014.</span><br/>
+              <span id="last-updated">This page was last updated on January 9, 2014.</span><br/>
               For more information, visit <a href="//mozilla.org/lightbeam">mozilla.org/lightbeam</a>
             </div>
         </div>
