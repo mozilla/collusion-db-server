@@ -46,7 +46,7 @@ app.use(express.methodOverride());
 // ## CORS middleware
 // based on https://gist.github.com/cuppster/2344435
 var allowCrossDomain = function(req, res, next) {
-    res.header("Access-Control-Allow-Origin", "resource://jid1-f9uj2thwoam5gq-at-jetpack");
+    res.header("Access-Control-Allow-Origin", "resource://jid1-F9UJ2thwoAm5gQ@jetpack ");
     res.header("Access-Control-Allow-Methods", "POST");
     res.header("Access-Control-Allow-Headers", "Content-Type, Collusion-Share-Data");
     if ("OPTIONS" == req.method) {
@@ -286,7 +286,7 @@ setInterval(runDashboardQueryTop10, CACHE_EXPIRE_TIME*1000); // runs every 15 mi
 
 function shareDataHelper(req,res){
     var jsonObj = req.body;
-    if ( jsonObj.format === "Collusion Save File" && jsonObj.version === "1.1" ){ // check format and version
+    if ( jsonObj.format === "Lightbeam Save File" && jsonObj.version === "1.1" ){ // check format and version
         postToDB(jsonObj.connections,jsonObj.isRobot,function(result){
             console.log("========== SHARE DATA ENDS ==========");
             if ( result.error ){
